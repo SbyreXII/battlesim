@@ -2,14 +2,22 @@ import type { DofusDbMonsterGrade } from "./dofusdb.js";
 import type { AttackerProfile } from "../engine/damage.js";
 import type { ResistanceProfile } from "../engine/optimizer.js";
 
-/** Adapte un grade de monstre DofusDB au format attendu par le moteur de dégâts. */
+/**
+ * Adapte un grade de monstre DofusDB au format attendu par le moteur de
+ * dégâts. Les caractéristiques (Force/Intelligence/Chance/Agilité) sont
+ * mises à 0 : vérifié empiriquement contre dofensive.com qu'elles ne
+ * s'ajoutent PAS aux dégâts d'un monstre — voir le commentaire sur
+ * `MONSTER_DAMAGE_MULTIPLIER` dans spellCatalog.ts. Les dégâts d'un monstre
+ * viennent uniquement des dés du sort (déjà ×2 par `resolveMonsterDamageSpells`)
+ * et de `bonusCharacteristics.bonusXDamage`, qui restent appliqués ici.
+ */
 export function monsterGradeToAttackerProfile(grade: DofusDbMonsterGrade): AttackerProfile {
   return {
     characteristics: {
-      strength: grade.strength,
-      intelligence: grade.intelligence,
-      chance: grade.chance,
-      agility: grade.agility,
+      strength: 0,
+      intelligence: 0,
+      chance: 0,
+      agility: 0,
     },
     elementalFixedDamage: {
       neutral: 0,

@@ -24,7 +24,7 @@ export const ELEMENT_ID_MAP: Record<number, Element> = {
   4: "air",
 };
 
-const ELEMENT_CHARACTERISTIC: Partial<Record<Element, keyof AttackerProfile["characteristics"]>> = {
+export const ELEMENT_CHARACTERISTIC: Partial<Record<Element, keyof AttackerProfile["characteristics"]>> = {
   earth: "strength",
   fire: "intelligence",
   water: "chance",

@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "BattleSim — Optimiseur Dofus",
+  "version": "0.1.0",
+  "description": "Teste le stuff dofusbook.net ouvert dans cet onglet contre un monstre dofensive.com, sans copier-coller.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "BattleSim"
+  },
+  "permissions": ["activeTab", "scripting", "tabs"],
+  "host_permissions": [
+    "https://www.dofusbook.net/*",
+    "https://dofusbook.net/*",
+    "http://localhost:3000/*"
+  ]
+}

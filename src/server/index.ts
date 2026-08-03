@@ -8,6 +8,19 @@ const PUBLIC_DIR = path.join(__dirname, "..", "..", "public");
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
+// Permet à l'extension navigateur (origine chrome-extension://...) d'appeler
+// l'API locale. Sans danger : serveur local, pas de données sensibles ni
+// d'authentification en jeu.
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 app.use(express.static(PUBLIC_DIR));
 // Sert le stuff d'exemple utilisé par le bouton "Charger un exemple" du formulaire.
 app.use("/fixtures", express.static(path.join(__dirname, "..", "..", "fixtures")));

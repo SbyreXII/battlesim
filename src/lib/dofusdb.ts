@@ -41,6 +41,15 @@ export interface DofusDbMonster {
   grades: DofusDbMonsterGrade[];
   name: Record<string, string>;
   spells: number[];
+  /**
+   * Un item par sort de `spells` (même index) : chaîne "spellGrade,level;..."
+   * — une paire par grade de MONSTRE (1 à 6), indiquant quel grade du SORT
+   * utiliser à ce grade de monstre. Nécessaire car `getBestSpellLevel` (conçu
+   * pour les personnages, qui choisit le plus haut grade éligible par
+   * niveau) donnerait un résultat faux pour un monstre bas grade dont un
+   * sort a des dégâts différents selon le grade.
+   */
+  spellGrades: string[];
 }
 
 export async function getMonsterById(id: number): Promise<DofusDbMonster> {
@@ -87,6 +96,7 @@ export interface DofusDbSpellLevel {
   criticalHitProbability: number; // "1 chance sur N"
   minPlayerLevel: number;
   maxCastPerTurn: number; // 0 = illimité
+  maxCastPerTarget: number; // 0 = illimité ; limite cumulée sur toute la durée du combat contre une même cible
   effects: DofusDbSpellEffect[];
   criticalEffect: DofusDbSpellEffect[];
 }
@@ -134,4 +144,25 @@ export async function getBestSpellLevel(
     );
   }
   return best;
+}
+
+/**
+ * Renvoie le spell-level d'un grade précis (utilisé pour les sorts de
+ * monstre, où le grade à utiliser vient de `DofusDbMonster.spellGrades`, pas
+ * du niveau du monstre). Repli sur le grade le plus bas si le grade demandé
+ * n'existe pas.
+ */
+export async function getSpellLevelForGrade(
+  spellId: number,
+  desiredGrade: number,
+): Promise<DofusDbSpellLevel> {
+  const spell = await getSpellById(spellId);
+  const levels = await Promise.all(spell.spellLevels.map(getSpellLevelById));
+  const match = levels.find((l) => l.grade === desiredGrade);
+  if (match) return match;
+  const sorted = levels.sort((a, b) => a.grade - b.grade);
+  if (!sorted[0]) {
+    throw new Error(`Aucun niveau trouvé pour le sort ${spellId}`);
+  }
+  return sorted[0];
 }

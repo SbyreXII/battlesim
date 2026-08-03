@@ -17,6 +17,35 @@ exampleBtn.addEventListener("click", async () => {
   monsterLinkEl.value = EXAMPLE_MONSTER_LINK;
 });
 
+// Bookmarklet : à exécuter depuis la page du stuff sur dofusbook.net (même
+// origine, donc pas bloqué par Cloudflare/CORS contrairement à un appel
+// depuis notre propre site). Récupère l'id du stuff dans l'URL, fetch le
+// JSON, le copie dans le presse-papier.
+const BOOKMARKLET_SOURCE = `(function(){
+  var m = location.href.match(/(\\d{5,})/);
+  if (!m) { alert("Va d'abord sur la page de ton stuff sur dofusbook.net"); return; }
+  fetch('/api/stuffs/dofus/public/' + m[1], { headers: { Accept: 'application/json' } })
+    .then(function(r){ return r.text(); })
+    .then(function(t){
+      return navigator.clipboard.writeText(t).then(function(){
+        alert('Stuff copié ! Reviens sur BattleSim et clique sur "Coller depuis le presse-papier".');
+      });
+    })
+    .catch(function(e){ alert('Erreur : ' + e); });
+})();`;
+
+document.getElementById("bookmarklet-link").href = "javascript:" + encodeURIComponent(BOOKMARKLET_SOURCE);
+
+document.getElementById("paste-btn").addEventListener("click", async () => {
+  try {
+    stuffJsonEl.value = await navigator.clipboard.readText();
+  } catch (err) {
+    errorEl.textContent =
+      "Impossible de lire le presse-papier (" + err.message + "). Colle manuellement avec Ctrl+V dans le champ.";
+    errorEl.hidden = false;
+  }
+});
+
 submitBtn.addEventListener("click", async () => {
   errorEl.hidden = true;
   resultsPanel.hidden = true;
@@ -58,6 +87,20 @@ function turnPlanHtml(turn) {
     <div>PA utilisés : ${turn.totalApUsed}</div>
     <div class="total">Total : ${turn.totalDamage} dégâts</div>
   </div>`;
+}
+
+function raceHtml(race) {
+  const won = race.outcome === "player_wins";
+  const badge = won
+    ? `<span class="badge good">Tu gagnes</span> en ${race.turnsToKillMonster} tours`
+    : `<span class="badge warn">Tu perds</span> — le monstre te tue au tour ${race.turnsToKillPlayer} (avant que tu ne le tues)`;
+  return `<p>${badge}</p>
+    <p class="coverage-note">
+      Hypothèses : le joueur agit en premier à chaque tour (pas de vraie gestion d'initiative),
+      et les PV du joueur (${race.playerLifePointsApprox}) ne comptent que la Vitalité des objets —
+      les PV de base liés à la classe/niveau ne sont pas encore inclus, donc ce chiffre est probablement
+      sous-estimé (tu as sans doute plus de PV en vrai, donc plus de marge que ce qui est affiché).
+    </p>`;
 }
 
 function render(data) {
@@ -115,9 +158,12 @@ function render(data) {
       <tbody>${strategyRows}</tbody>
     </table>
 
-    <div class="section-title">Ce que le monstre inflige au joueur</div>
+    <div class="section-title">Ce que le monstre inflige au joueur (1er tour)</div>
     <p class="coverage-note">${ma.spellCoverage.resolved}/${ma.spellCoverage.total} sorts du monstre reconnus, ${ma.apBudget} PA.</p>
     ${turnPlanHtml(ma.turn)}
+
+    <div class="section-title">Qui gagne ?</div>
+    ${raceHtml(data.race)}
   `;
 
   resultsPanel.hidden = false;

@@ -1,5 +1,12 @@
-import { getBestSpellLevel, getSpellById, type DofusDbSpellEffect } from "./dofusdb.js";
-import { ELEMENT_ID_MAP, type Element, type DamageRoll } from "../engine/damage.js";
+import {
+  getBestSpellLevel,
+  getSpellById,
+  getSpellLevelForGrade,
+  type DofusDbSpellEffect,
+  type DofusDbMonster,
+  type DofusDbMonsterGrade,
+} from "./dofusdb.js";
+import { ELEMENT_ID_MAP, ELEMENT_CHARACTERISTIC, type Element, type DamageRoll } from "../engine/damage.js";
 
 /**
  * effectId Ankama "#1 à #2 dommages {élément}", un par élément (vérifié sur
@@ -14,8 +21,10 @@ export interface DamageSpellOption {
   name: string;
   grade: number;
   apCost: number;
-  /** Nombre de lancers autorisés sur une même cible par tour (0 = illimité côté DofusDB). */
+  /** Nombre de lancers autorisés par tour (0 = illimité côté DofusDB). */
   maxCastPerTurn: number;
+  /** Nombre de lancers autorisés sur UNE MÊME CIBLE, cumulé sur tout le combat (0 = illimité). */
+  maxCastPerTarget: number;
   range: number;
   element: Element;
   normalDamage: DamageRoll;
@@ -57,6 +66,7 @@ export async function resolveDamageSpell(
     grade: spellLevel.grade,
     apCost: spellLevel.apCost,
     maxCastPerTurn: spellLevel.maxCastPerTurn,
+    maxCastPerTarget: spellLevel.maxCastPerTarget,
     range: spellLevel.range,
     element: ELEMENT_ID_MAP[normalEffect.effectElement],
     normalDamage: { min: normalEffect.diceNum, max: normalEffect.diceSide },
@@ -72,6 +82,94 @@ export async function resolveDamageSpells(
 ): Promise<DamageSpellOption[]> {
   const resolved = await Promise.all(
     spellIds.map((id) => resolveDamageSpell(id, characterLevel)),
+  );
+  return resolved.filter((s): s is DamageSpellOption => s !== null);
+}
+
+/**
+ * Formule des dégâts de MONSTRE, vérifiée empiriquement contre dofensive.com
+ * sur 2 sorts de 2 monstres différents (dégâts normaux ET critiques, 4
+ * valeurs comparées) :
+ *
+ *   dégâts affichés = dés bruts DofusDB × (1 + caractéristique/100)
+ *
+ * où "caractéristique" suit le même mapping élémentaire que pour un joueur
+ * (Terre→Force, Feu→Intelligence, Eau→Chance, Air→Agilité) :
+ *   - Boule de Neige (Eau, monstre à 100 Chance) : 151-200 × (1+100/100) = 302-400 ✓
+ *   - Grift (Terre, monstre à 800 Force) : 101-110 × (1+800/100) = 909-990 ✓
+ *
+ * Contrairement à ma première hypothèse (×2 fixe), ce n'est PAS une
+ * constante : ça dépend bien de la caractéristique du monstre pour
+ * l'élément du sort. Les caractéristiques du monstre n'interviennent QUE
+ * comme multiplicateur ici (pas d'ajout en plus), d'où
+ * `monsterGradeToAttackerProfile` qui les met à 0 côté `AttackerProfile`
+ * (sinon elles seraient comptées deux fois par `computeSpellDamage`).
+ *
+ * Cas non résolu : les sorts Neutre n'ont pas de caractéristique associée
+ * (comme pour les joueurs), donc multiplicateur ×1 ici. Pas pu le vérifier
+ * précisément (le seul sort Neutre testé venait d'un monstre dont Force et
+ * Chance valaient la même chose, donc les deux hypothèses collaient) — à
+ * revérifier si un cas Neutre donne un résultat visiblement faux.
+ */
+function monsterDamageMultiplier(element: Element, grade: DofusDbMonsterGrade): number {
+  const key = ELEMENT_CHARACTERISTIC[element];
+  if (!key) return 1;
+  const characteristicValue = { strength: grade.strength, intelligence: grade.intelligence, chance: grade.chance, agility: grade.agility }[key];
+  return 1 + characteristicValue / 100;
+}
+
+function parseSpellGradeForMonsterGrade(spellGradesEntry: string, monsterGrade: number): number {
+  const pairs = spellGradesEntry.split(";").map((p) => Number(p.split(",")[0]));
+  return pairs[monsterGrade - 1] ?? pairs[pairs.length - 1] ?? 1;
+}
+
+async function resolveMonsterDamageSpell(
+  spellId: number,
+  spellGrade: number,
+  monsterGrade: DofusDbMonsterGrade,
+): Promise<DamageSpellOption | null> {
+  const [spell, spellLevel] = await Promise.all([
+    getSpellById(spellId),
+    getSpellLevelForGrade(spellId, spellGrade),
+  ]);
+
+  const normalEffect = findDamageEffect(spellLevel.effects);
+  if (!normalEffect) return null;
+  const criticalEffect = findDamageEffect(spellLevel.criticalEffect) ?? normalEffect;
+  const element = ELEMENT_ID_MAP[normalEffect.effectElement];
+  const multiplier = monsterDamageMultiplier(element, monsterGrade);
+
+  return {
+    spellId,
+    name: spell.name.fr,
+    grade: spellLevel.grade,
+    apCost: spellLevel.apCost,
+    maxCastPerTurn: spellLevel.maxCastPerTurn,
+    maxCastPerTarget: spellLevel.maxCastPerTarget,
+    range: spellLevel.range,
+    element,
+    normalDamage: {
+      min: normalEffect.diceNum * multiplier,
+      max: normalEffect.diceSide * multiplier,
+    },
+    criticalDamage: {
+      min: criticalEffect.diceNum * multiplier,
+      max: criticalEffect.diceSide * multiplier,
+    },
+    criticalHitProbability: spellLevel.criticalHitProbability,
+  };
+}
+
+/** Résout les sorts de dégâts d'un monstre, au grade réellement utilisé par ce monstre (pas "le plus haut"). */
+export async function resolveMonsterDamageSpells(
+  monster: DofusDbMonster,
+  grade: DofusDbMonsterGrade,
+): Promise<DamageSpellOption[]> {
+  const resolved = await Promise.all(
+    monster.spells.map((spellId, i) => {
+      const spellGrade = parseSpellGradeForMonsterGrade(monster.spellGrades[i] ?? "1,0", grade.grade);
+      return resolveMonsterDamageSpell(spellId, spellGrade, grade);
+    }),
   );
   return resolved.filter((s): s is DamageSpellOption => s !== null);
 }

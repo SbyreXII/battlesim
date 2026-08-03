@@ -1,9 +1,15 @@
 import { parseStuffJson } from "./dofusbookParser.js";
 import { computeCharacterStats } from "./characterStats.js";
 import { getBreedById } from "./dofusdb.js";
-import { resolveDamageSpells, resolveBuffSpells } from "./spellCatalog.js";
+import { resolveDamageSpells, resolveBuffSpells, resolveMonsterDamageSpells } from "./spellCatalog.js";
 import { parseDofensiveLink } from "./dofensiveParser.js";
-import { planBestTurn, planOptimalFight, type TargetProfile, type TurnPlan } from "../engine/optimizer.js";
+import {
+  planOptimalFight,
+  simulateRace,
+  casterScheduleFor,
+  type TargetProfile,
+  type TurnPlan,
+} from "../engine/optimizer.js";
 import { monsterGradeToAttackerProfile, monsterGradeToResistances } from "./monsterStats.js";
 
 export interface SimulationInput {
@@ -73,7 +79,16 @@ export interface SimulationResult {
     turn: TurnPlanView;
     spellCoverage: { resolved: number; total: number };
   };
+  race: {
+    outcome: "player_wins" | "monster_wins";
+    turnsToKillMonster: number | null;
+    turnsToKillPlayer: number | null;
+    /** Approximation (Vitalité brute uniquement, sans PV de base classe/niveau) — probablement sous-estimée. */
+    playerLifePointsApprox: number;
+  };
 }
+
+const EMPTY_TURN_VIEW: TurnPlanView = { entries: [], totalApUsed: 0, totalDamage: 0 };
 
 export async function runSimulation(input: SimulationInput): Promise<SimulationResult> {
   const stuff = parseStuffJson(input.stuffJson);
@@ -98,14 +113,31 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
     grade.lifePoints,
   );
 
-  const monsterSpells = await resolveDamageSpells(monster.spells, grade.level);
+  const monsterSpells = await resolveMonsterDamageSpells(monster, grade);
   const monsterAttacker = monsterGradeToAttackerProfile(grade);
   const playerTarget: TargetProfile = {
     resistancePercent: stats.defense.resistancePercent,
     resistanceFixed: stats.defense.resistanceFixed,
     critResistancePercent: stats.defense.critResistancePercent,
   };
-  const monsterTurn = planBestTurn(monsterSpells, monsterAttacker, playerTarget, grade.actionPoints);
+
+  // Approximation grossière et probablement sous-estimée (pas de PV de base
+  // classe/niveau, seulement la Vitalité des objets+stuffCarac) — cf. le
+  // commentaire sur `playerLifePointsApprox` dans SimulationResult.
+  const playerLifePointsApprox = Math.round(stats.characteristics.vitality);
+
+  const race = simulateRace(
+    damageSpells,
+    casterScheduleFor(stats, best.buff, apPerTurn),
+    monsterTarget,
+    grade.lifePoints,
+    monsterSpells,
+    monsterAttacker,
+    grade.actionPoints,
+    playerTarget,
+    playerLifePointsApprox,
+  );
+  const firstRound = race.rounds[0];
 
   return {
     character: {
@@ -145,8 +177,14 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
     },
     monsterAttack: {
       apBudget: grade.actionPoints,
-      turn: toView(monsterTurn),
+      turn: firstRound.monsterTurn ? toView(firstRound.monsterTurn) : EMPTY_TURN_VIEW,
       spellCoverage: { resolved: monsterSpells.length, total: monster.spells.length },
+    },
+    race: {
+      outcome: race.outcome,
+      turnsToKillMonster: race.turnsToKillMonster,
+      turnsToKillPlayer: race.turnsToKillPlayer,
+      playerLifePointsApprox,
     },
   };
 }

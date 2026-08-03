@@ -16,13 +16,23 @@
   <section class="panel" id="form-panel">
     <h2>1. Entrées</h2>
 
+    <div class="bookmarklet-box">
+      <strong>Raccourci (une fois installé, 1 clic suffit)</strong>
+      <p class="hint">
+        Glisse ce lien dans ta barre de favoris : <a id="bookmarklet-link" href="#">📋 Copier mon stuff</a>.
+        Ensuite, va sur la page de ton stuff sur dofusbook.net, clique dessus dans tes favoris
+        (ça copie le JSON dans le presse-papier), reviens ici et clique sur "Coller depuis le presse-papier" ci-dessous.
+      </p>
+    </div>
+
     <label for="stuff-json">
       Stuff (JSON dofusbook.net)
       <span class="hint">
-        Ouvre <code>https://www.dofusbook.net/api/stuffs/dofus/public/&lt;id-du-stuff&gt;</code> dans ton navigateur
-        (id visible dans l'URL de ton stuff, ou dans son slug), copie tout le JSON affiché, colle-le ici.
+        Ou manuellement : ouvre <code>https://www.dofusbook.net/api/stuffs/dofus/public/&lt;id-du-stuff&gt;</code>
+        dans ton navigateur, copie tout le JSON affiché, colle-le ici.
       </span>
     </label>
+    <button id="paste-btn" class="secondary" type="button">📋 Coller depuis le presse-papier</button>
     <textarea id="stuff-json" rows="10" placeholder='{"source":"database","stuff":{...},"items":[...],"cloths":[...]}'></textarea>
 
     <label for="monster-link">
