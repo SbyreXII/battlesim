@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BattleSim — Optimiseur de dégâts Dofus</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header>
+  <h1>BattleSim</h1>
+  <p class="subtitle">Colle ton stuff dofusbook.net + un lien monstre dofensive.com, on calcule la rotation de sorts la plus rapide pour le tuer.</p>
+</header>
+
+<main>
+  <section class="panel" id="form-panel">
+    <h2>1. Entrées</h2>
+
+    <label for="stuff-json">
+      Stuff (JSON dofusbook.net)
+      <span class="hint">
+        Ouvre <code>https://www.dofusbook.net/api/stuffs/dofus/public/&lt;id-du-stuff&gt;</code> dans ton navigateur
+        (id visible dans l'URL de ton stuff, ou dans son slug), copie tout le JSON affiché, colle-le ici.
+      </span>
+    </label>
+    <textarea id="stuff-json" rows="10" placeholder='{"source":"database","stuff":{...},"items":[...],"cloths":[...]}'></textarea>
+
+    <label for="monster-link">
+      Lien monstre (dofensive.com)
+      <span class="hint">Ex : https://dofensive.com/fr/monster/2819?q=...</span>
+    </label>
+    <input type="text" id="monster-link" placeholder="https://dofensive.com/fr/monster/..." />
+
+    <label for="ap-override">
+      PA/tour (optionnel — sinon calculé automatiquement à partir du stuff)
+    </label>
+    <input type="number" id="ap-override" min="1" placeholder="ex : 12" />
+
+    <button id="submit-btn">Calculer</button>
+    <button id="example-btn" class="secondary" type="button">Charger un exemple</button>
+    <p id="error" class="error" hidden></p>
+  </section>
+
+  <section class="panel" id="results-panel" hidden>
+    <h2>2. Résultat</h2>
+    <div id="results"></div>
+  </section>
+
+  <section class="panel" id="loading-panel" hidden>
+    <p>Calcul en cours…</p>
+  </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>

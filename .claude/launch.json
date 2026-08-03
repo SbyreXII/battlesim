@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "battlesim-dev",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "C:\\Users\\Josselin\\Documents\\Josselin\\Autres\\Games\\Ankama\\BattleSim\\run-dev.cmd"],
+      "port": 3000
+    }
+  ]
+}
