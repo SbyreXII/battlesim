@@ -1,6 +1,7 @@
 const stuffJsonEl = document.getElementById("stuff-json");
 const monsterLinkEl = document.getElementById("monster-link");
 const apOverrideEl = document.getElementById("ap-override");
+const pmOverrideEl = document.getElementById("pm-override");
 const pvOverrideEl = document.getElementById("pv-override");
 const submitBtn = document.getElementById("submit-btn");
 const exampleBtn = document.getElementById("example-btn");
@@ -55,6 +56,7 @@ submitBtn.addEventListener("click", async () => {
 
   try {
     const apOverride = apOverrideEl.value ? Number(apOverrideEl.value) : undefined;
+    const pmOverride = pmOverrideEl.value ? Number(pmOverrideEl.value) : undefined;
     const playerLifePointsOverride = pvOverrideEl.value ? Number(pvOverrideEl.value) : undefined;
     const res = await fetch("/api/simulate", {
       method: "POST",
@@ -63,6 +65,7 @@ submitBtn.addEventListener("click", async () => {
         stuffJson: stuffJsonEl.value,
         monsterLink: monsterLinkEl.value,
         apOverride,
+        pmOverride,
         playerLifePointsOverride,
       }),
     });
@@ -120,6 +123,20 @@ function kiteHtml(kite) {
     estimation optimiste : la vraie chance d'y arriver dépend du Tacle du monstre contre ta Fuite, pas modélisé ici.</p>`;
 }
 
+function titleHintHtml(c) {
+  const hint = c.titleHint;
+  if (hint.pa === null && hint.pm === null) return "";
+  const parts = [];
+  if (hint.pa !== null) parts.push(`${hint.pa} PA`);
+  if (hint.pm !== null) parts.push(`${hint.pm} PM`);
+  const mismatch =
+    (hint.pa !== null && hint.pa !== c.apPerTurn) || (hint.pm !== null && hint.pm !== c.pmPerTurn);
+  const note = mismatch
+    ? `<span class="badge warn">Ne correspond pas au calcul</span> — vérifie tes PA/PM ou renseigne-les manuellement ci-dessus.`
+    : `Cohérent avec le calcul.`;
+  return `<p class="coverage-note">Titre du stuff : "${parts.join(" / ")}" (texte libre, non vérifié) — ${note}</p>`;
+}
+
 function render(data) {
   const c = data.character;
   const m = data.monster;
@@ -154,12 +171,14 @@ function render(data) {
       <div><span>Nom</span>${c.name}</div>
       <div><span>Niveau</span>${c.level}</div>
       <div><span>PA/tour</span>${c.apPerTurn}</div>
+      <div><span>PM/tour</span>${c.pmPerTurn}</div>
       <div><span>Intelligence</span>${c.intelligence}</div>
       <div><span>Force</span>${c.strength}</div>
       <div><span>Chance</span>${c.chance}</div>
       <div><span>Agilité</span>${c.agility}</div>
       <div><span>Vitalité</span>${c.vitality}</div>
     </div>
+    ${titleHintHtml(c)}
     <p class="coverage-note">${data.spellCoverage.damageResolved}/${data.spellCoverage.damageTotal} sorts de dégâts reconnus, ${data.spellCoverage.buffResolved} sort(s) de buff.</p>
 
     <div class="section-title">Cible : ${m.name} (grade ${m.grade}, niv. ${m.level})</div>

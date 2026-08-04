@@ -4,6 +4,7 @@ import { getBreedById } from "./dofusdb.js";
 import { resolveDamageSpells, resolveBuffSpells, resolveMonsterDamageSpells } from "./spellCatalog.js";
 import { resolveWeaponAttack } from "./weaponAttack.js";
 import { assessKiteFeasibility, splitMonsterSpellsByRange } from "./kiteAnalysis.js";
+import { parseStatsFromTitle } from "./titleStats.js";
 import { parseDofensiveLink } from "./dofensiveParser.js";
 import {
   planOptimalFight,
@@ -19,6 +20,8 @@ export interface SimulationInput {
   monsterLink: string;
   /** PA/tour du joueur. TODO : dériver automatiquement (base + objets + monture). */
   apOverride?: number;
+  /** PM/tour du joueur (utilisé pour l'estimation de kite). */
+  pmOverride?: number;
   /**
    * PV réels du joueur (visibles dans la fiche personnage en jeu). Sans ça,
    * on retombe sur une approximation par la Vitalité seule, qui sous-estime
@@ -53,11 +56,19 @@ export interface SimulationResult {
     className: number;
     level: number;
     apPerTurn: number;
+    pmPerTurn: number;
     intelligence: number;
     strength: number;
     chance: number;
     agility: number;
     vitality: number;
+    /**
+     * PA/PM extraits du TITRE du stuff, quand il suit le format "X PA / Y PM"
+     * (convention courante mais pas universelle) — texte libre tapé par le
+     * créateur, ni calculé ni vérifié par dofusbook, potentiellement périmé.
+     * À utiliser comme indice de recoupement, pas comme source fiable.
+     */
+    titleHint: { pa: number | null; pm: number | null };
   };
   monster: {
     name: string;
@@ -122,6 +133,8 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
   const stuff = parseStuffJson(input.stuffJson);
   const stats = computeCharacterStats(stuff);
   const apPerTurn = input.apOverride ?? stats.actionPoints;
+  const pmPerTurn = input.pmOverride ?? stats.movementPoints;
+  const titleHint = parseStatsFromTitle(stuff.name);
 
   const breed = await getBreedById(stuff.character_class);
   const [spellDamageOptions, buffSpells] = await Promise.all([
@@ -171,7 +184,7 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
   );
   const firstRound = race.rounds[0];
 
-  const kiteFeasibility = assessKiteFeasibility(damageSpells, stats.movementPoints, grade.movementPoints);
+  const kiteFeasibility = assessKiteFeasibility(damageSpells, pmPerTurn, grade.movementPoints);
   const kite: SimulationResult["kite"] = kiteFeasibility.possible
     ? (() => {
         const { ranged } = splitMonsterSpellsByRange(monsterSpells);
@@ -202,11 +215,13 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
       className: stuff.character_class,
       level: stuff.character_level,
       apPerTurn,
+      pmPerTurn,
       intelligence: Math.round(stats.characteristics.intelligence),
       strength: Math.round(stats.characteristics.strength),
       chance: Math.round(stats.characteristics.chance),
       agility: Math.round(stats.characteristics.agility),
       vitality: Math.round(stats.characteristics.vitality),
+      titleHint,
     },
     monster: {
       name: monster.name.fr,

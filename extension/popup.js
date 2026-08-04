@@ -7,6 +7,7 @@ const pasteBtn = document.getElementById("paste-btn");
 const monsterLinkEl = document.getElementById("monster-link");
 const monsterStatusEl = document.getElementById("monster-status");
 const apOverrideEl = document.getElementById("ap-override");
+const pmOverrideEl = document.getElementById("pm-override");
 const pvOverrideEl = document.getElementById("pv-override");
 const submitBtn = document.getElementById("submit-btn");
 const errorEl = document.getElementById("error");
@@ -98,6 +99,7 @@ submitBtn.addEventListener("click", async () => {
     }
 
     const apOverride = apOverrideEl.value ? Number(apOverrideEl.value) : undefined;
+    const pmOverride = pmOverrideEl.value ? Number(pmOverrideEl.value) : undefined;
     const playerLifePointsOverride = pvOverrideEl.value ? Number(pvOverrideEl.value) : undefined;
 
     let res;
@@ -109,6 +111,7 @@ submitBtn.addEventListener("click", async () => {
           stuffJson,
           monsterLink: monsterLinkEl.value,
           apOverride,
+          pmOverride,
           playerLifePointsOverride,
         }),
       });
@@ -158,6 +161,20 @@ function kiteHtml(kite) {
   return `<p>${badge}</p><p class="coverage-note">Estimation optimiste (Tacle du monstre non modélisé).</p>`;
 }
 
+function titleHintHtml(c) {
+  const hint = c.titleHint;
+  if (hint.pa === null && hint.pm === null) return "";
+  const parts = [];
+  if (hint.pa !== null) parts.push(`${hint.pa} PA`);
+  if (hint.pm !== null) parts.push(`${hint.pm} PM`);
+  const mismatch =
+    (hint.pa !== null && hint.pa !== c.apPerTurn) || (hint.pm !== null && hint.pm !== c.pmPerTurn);
+  const note = mismatch
+    ? `<span class="badge warn">Ne correspond pas au calcul</span>`
+    : `Cohérent avec le calcul.`;
+  return `<p class="coverage-note">Titre : "${parts.join(" / ")}" — ${note}</p>`;
+}
+
 function render(data) {
   const c = data.character;
   const m = data.monster;
@@ -174,8 +191,9 @@ function render(data) {
     .join("");
 
   resultsEl.innerHTML = `
-    <div class="section-title">${c.name} (niv. ${c.level}, ${c.apPerTurn} PA)</div>
+    <div class="section-title">${c.name} (niv. ${c.level}, ${c.apPerTurn} PA / ${c.pmPerTurn} PM)</div>
     <p class="coverage-note">Int ${c.intelligence} · For ${c.strength} · Cha ${c.chance} · Agi ${c.agility} · Vit ${c.vitality}</p>
+    ${titleHintHtml(c)}
     <p class="coverage-note">${data.spellCoverage.damageResolved}/${data.spellCoverage.damageTotal} sorts reconnus</p>
 
     <div class="section-title">${m.name} (grade ${m.grade}, ${m.lifePoints} PV)</div>

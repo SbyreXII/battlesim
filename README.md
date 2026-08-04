@@ -35,9 +35,11 @@ dofusbook.net est protégé par Cloudflare, qui bloque les requêtes automatisé
 2. **Extension navigateur** : automatise complètement l'étape ci-dessus. Voir [extension/README.md](extension/README.md).
 3. **Manuel** : ouvre `https://www.dofusbook.net/api/stuffs/dofus/public/<id-du-stuff>` dans ton navigateur (l'id est dans l'URL ou le slug de ton stuff), copie le JSON affiché, colle-le dans le champ prévu.
 
-### Les PA et PV réels
+### Les PA, PM et PV réels
 
-Le calcul automatique des PA et des PV du joueur est approximatif (voir plus bas). Deux champs optionnels permettent de renseigner les vraies valeurs (visibles sur ta fiche personnage en jeu) pour un résultat fiable.
+Le calcul automatique des PA, PM et PV du joueur est approximatif (voir plus bas). Trois champs optionnels permettent de renseigner les vraies valeurs (visibles sur ta fiche personnage en jeu) pour un résultat fiable.
+
+Astuce : si le titre de ton stuff suit le format "... 12 PA / 5 PM ..." (convention courante sur dofusbook.net), l'outil l'affiche à titre indicatif et prévient si ça ne correspond pas au calcul automatique. Ce n'est qu'un texte libre tapé par le créateur du stuff — ni calculé ni vérifié par dofusbook — donc à utiliser comme recoupement, pas comme source fiable en cas de désaccord.
 
 ## Structure du projet
 
