@@ -17,6 +17,13 @@ export interface SimulationInput {
   monsterLink: string;
   /** PA/tour du joueur. TODO : dériver automatiquement (base + objets + monture). */
   apOverride?: number;
+  /**
+   * PV réels du joueur (visibles dans la fiche personnage en jeu). Sans ça,
+   * on retombe sur une approximation par la Vitalité seule, qui sous-estime
+   * fortement (elle ignore les PV de base classe/niveau ET le bonus des
+   * parchemins de Vitalité — cf. commentaire sur `playerLifePointsApprox`).
+   */
+  playerLifePointsOverride?: number;
 }
 
 export interface TurnPlanView {
@@ -83,8 +90,9 @@ export interface SimulationResult {
     outcome: "player_wins" | "monster_wins";
     turnsToKillMonster: number | null;
     turnsToKillPlayer: number | null;
-    /** Approximation (Vitalité brute uniquement, sans PV de base classe/niveau) — probablement sous-estimée. */
-    playerLifePointsApprox: number;
+    playerLifePoints: number;
+    /** false si `playerLifePointsOverride` a été fourni en entrée (valeur réelle, fiable). */
+    playerLifePointsIsApprox: boolean;
   };
 }
 
@@ -121,10 +129,12 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
     critResistancePercent: stats.defense.critResistancePercent,
   };
 
-  // Approximation grossière et probablement sous-estimée (pas de PV de base
-  // classe/niveau, seulement la Vitalité des objets+stuffCarac) — cf. le
-  // commentaire sur `playerLifePointsApprox` dans SimulationResult.
-  const playerLifePointsApprox = Math.round(stats.characteristics.vitality);
+  // Approximation grossière et sous-estimée si pas d'override fourni : la
+  // Vitalité seule ignore les PV de base classe/niveau ET le bonus des
+  // parchemins de Vitalité (vérifié avec un utilisateur : ~4300 PV réels en
+  // jeu contre une bien plus petite approximation par ce calcul).
+  const playerLifePointsIsApprox = input.playerLifePointsOverride === undefined;
+  const playerLifePoints = input.playerLifePointsOverride ?? Math.round(stats.characteristics.vitality);
 
   const race = simulateRace(
     damageSpells,
@@ -135,7 +145,7 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
     monsterAttacker,
     grade.actionPoints,
     playerTarget,
-    playerLifePointsApprox,
+    playerLifePoints,
   );
   const firstRound = race.rounds[0];
 
@@ -184,7 +194,8 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
       outcome: race.outcome,
       turnsToKillMonster: race.turnsToKillMonster,
       turnsToKillPlayer: race.turnsToKillPlayer,
-      playerLifePointsApprox,
+      playerLifePoints,
+      playerLifePointsIsApprox,
     },
   };
 }

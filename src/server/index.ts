@@ -26,7 +26,7 @@ app.use(express.static(PUBLIC_DIR));
 app.use("/fixtures", express.static(path.join(__dirname, "..", "..", "fixtures")));
 
 app.post("/api/simulate", async (req, res) => {
-  const { stuffJson, monsterLink, apOverride } = req.body ?? {};
+  const { stuffJson, monsterLink, apOverride, playerLifePointsOverride } = req.body ?? {};
   if (typeof stuffJson !== "string" || !stuffJson.trim()) {
     res.status(400).json({ error: "Le JSON du stuff est manquant." });
     return;
@@ -41,6 +41,10 @@ app.post("/api/simulate", async (req, res) => {
       stuffJson,
       monsterLink,
       apOverride: typeof apOverride === "number" && apOverride > 0 ? apOverride : undefined,
+      playerLifePointsOverride:
+        typeof playerLifePointsOverride === "number" && playerLifePointsOverride > 0
+          ? playerLifePointsOverride
+          : undefined,
     });
     res.json(result);
   } catch (err) {

@@ -1,6 +1,7 @@
 const stuffJsonEl = document.getElementById("stuff-json");
 const monsterLinkEl = document.getElementById("monster-link");
 const apOverrideEl = document.getElementById("ap-override");
+const pvOverrideEl = document.getElementById("pv-override");
 const submitBtn = document.getElementById("submit-btn");
 const exampleBtn = document.getElementById("example-btn");
 const errorEl = document.getElementById("error");
@@ -54,6 +55,7 @@ submitBtn.addEventListener("click", async () => {
 
   try {
     const apOverride = apOverrideEl.value ? Number(apOverrideEl.value) : undefined;
+    const playerLifePointsOverride = pvOverrideEl.value ? Number(pvOverrideEl.value) : undefined;
     const res = await fetch("/api/simulate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -61,6 +63,7 @@ submitBtn.addEventListener("click", async () => {
         stuffJson: stuffJsonEl.value,
         monsterLink: monsterLinkEl.value,
         apOverride,
+        playerLifePointsOverride,
       }),
     });
     const data = await res.json();
@@ -94,13 +97,14 @@ function raceHtml(race) {
   const badge = won
     ? `<span class="badge good">Tu gagnes</span> en ${race.turnsToKillMonster} tours`
     : `<span class="badge warn">Tu perds</span> — le monstre te tue au tour ${race.turnsToKillPlayer} (avant que tu ne le tues)`;
+  const pvNote = race.playerLifePointsIsApprox
+    ? `PV du joueur : <strong>${race.playerLifePoints} (estimation, probablement sous-évaluée)</strong> —
+       Vitalité seule, sans les PV de base classe/niveau ni les parchemins. Renseigne tes vrais PV
+       (visibles sur ta fiche personnage en jeu) dans le champ "PV réels du joueur" pour un résultat fiable.`
+    : `PV du joueur : <strong>${race.playerLifePoints}</strong> (valeur réelle que tu as renseignée).`;
   return `<p>${badge}</p>
-    <p class="coverage-note">
-      Hypothèses : le joueur agit en premier à chaque tour (pas de vraie gestion d'initiative),
-      et les PV du joueur (${race.playerLifePointsApprox}) ne comptent que la Vitalité des objets —
-      les PV de base liés à la classe/niveau ne sont pas encore inclus, donc ce chiffre est probablement
-      sous-estimé (tu as sans doute plus de PV en vrai, donc plus de marge que ce qui est affiché).
-    </p>`;
+    <p class="coverage-note">${pvNote}</p>
+    <p class="coverage-note">Hypothèse : le joueur agit en premier à chaque tour (pas de vraie gestion d'initiative).</p>`;
 }
 
 function render(data) {

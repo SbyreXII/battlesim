@@ -7,6 +7,7 @@ const pasteBtn = document.getElementById("paste-btn");
 const monsterLinkEl = document.getElementById("monster-link");
 const monsterStatusEl = document.getElementById("monster-status");
 const apOverrideEl = document.getElementById("ap-override");
+const pvOverrideEl = document.getElementById("pv-override");
 const submitBtn = document.getElementById("submit-btn");
 const errorEl = document.getElementById("error");
 const resultsEl = document.getElementById("results");
@@ -97,13 +98,19 @@ submitBtn.addEventListener("click", async () => {
     }
 
     const apOverride = apOverrideEl.value ? Number(apOverrideEl.value) : undefined;
+    const playerLifePointsOverride = pvOverrideEl.value ? Number(pvOverrideEl.value) : undefined;
 
     let res;
     try {
       res = await fetch(API_BASE + "/api/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stuffJson, monsterLink: monsterLinkEl.value, apOverride }),
+        body: JSON.stringify({
+          stuffJson,
+          monsterLink: monsterLinkEl.value,
+          apOverride,
+          playerLifePointsOverride,
+        }),
       });
     } catch {
       throw new Error(
@@ -136,7 +143,10 @@ function raceHtml(race) {
   const badge = won
     ? `<span class="badge good">Tu gagnes</span> en ${race.turnsToKillMonster} tours`
     : `<span class="badge warn">Tu perds</span> — tué au tour ${race.turnsToKillPlayer}`;
-  return `<p>${badge}</p><p class="coverage-note">PV joueur ≈ ${race.playerLifePointsApprox} (Vitalité seule, sous-estimé — les PV de base classe/niveau manquent encore).</p>`;
+  const pvNote = race.playerLifePointsIsApprox
+    ? `PV joueur ≈ ${race.playerLifePoints} (estimation sous-évaluée — renseigne tes vrais PV ci-dessus)`
+    : `PV joueur : ${race.playerLifePoints} (valeur réelle)`;
+  return `<p>${badge}</p><p class="coverage-note">${pvNote}</p>`;
 }
 
 function render(data) {
