@@ -553,8 +553,8 @@ var MOBILITY_CODES = {
   ta: "tacklePercent",
   fu: "fuitePercent"
 };
-var BASE_ACTION_POINTS = 7;
-var BASE_MOVEMENT_POINTS = 4;
+var BASE_ACTION_POINTS = 6;
+var BASE_MOVEMENT_POINTS = 3;
 function emptyStats() {
   return {
     characteristics: { vitality: 0, strength: 0, intelligence: 0, chance: 0, agility: 0, wisdom: 0 },
@@ -617,8 +617,9 @@ function computeCharacterStats(stuff) {
   stats.characteristics.chance += carac.base_ch ?? 0;
   stats.characteristics.agility += carac.base_ag ?? 0;
   stats.characteristics.wisdom += carac.base_sa ?? 0;
-  stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus;
-  stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus;
+  const familiarBonus = stuff.stuffFm?.fm ?? {};
+  stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus + (familiarBonus.pa ?? 0);
+  stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus + (familiarBonus.pm ?? 0);
   return stats;
 }
 

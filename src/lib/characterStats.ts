@@ -75,7 +75,7 @@ export interface CharacterStats {
     critResistancePercent: number;
   };
   mobility: Record<(typeof MOBILITY_CODES)[keyof typeof MOBILITY_CODES], number>;
-  /** PA/PM totaux (base 6 PA / 3 PM + bonus d'objets ; monture non comptée). */
+  /** PA/PM totaux (base 6 PA / 3 PM + bonus d'objets + bonus de familier/monture). */
   actionPoints: number;
   movementPoints: number;
   /** Codes d'effet rencontrés mais pas encore modélisés (valeur moyenne sommée). */
@@ -83,17 +83,23 @@ export interface CharacterStats {
 }
 
 /**
- * Base Ankama (6 PA / 3 PM) + 1 PA + 1 PM, en supposant que les quêtes de
- * récompense permanente (très largement complétées par n'importe quel
- * personnage de haut niveau) ont été faites. Vérifié contre l'affichage
- * calculé par dofusbook.net lui-même sur un vrai stuff Enutrof niveau 200
- * (12 PA / 6 PM réels contre 10 PA / 4 PM en base stricte, donc bien +1 sur
- * les deux) — mais ce n'est qu'une hypothèse par défaut, pas une garantie
- * pour tous les personnages (ex: un perso qui n'a pas fait ces quêtes).
- * Utiliser `apOverride` pour corriger si besoin.
+ * Base Ankama stricte : 6 PA / 3 PM. Les quêtes de récompense permanente
+ * (PA/PM) n'existent PAS dans ce modèle : dofusbook ne connaît que l'état
+ * d'un stuff (objets + familier), jamais l'état de compte/quêtes du joueur,
+ * donc son propre PA/PM affiché ne peut être que base + objets + familier.
+ *
+ * Ancienne hypothèse abandonnée : on avait mis cette base à 7/4 (+1/+1) en
+ * supposant un bonus de quêtes universel, calibré sur un écart observé de
+ * +1 PA/+1 PM entre notre calcul et l'affichage réel dofusbook sur deux
+ * stuffs différents. En fait cet écart venait du bonus de FAMILIER
+ * (`stuffFm.fm.pa/pm`, cf. plus bas) qu'on ne lisait pas encore — confirmé
+ * en inspectant le JSON brut d'un stuff où `stuffFm.fm = {pa:1, pm:1}`
+ * correspond exactement à l'écart observé. Lire la vraie donnée au lieu de
+ * la deviner généralise correctement à n'importe quel familier (pas
+ * seulement +1/+1).
  */
-const BASE_ACTION_POINTS = 7;
-const BASE_MOVEMENT_POINTS = 4;
+const BASE_ACTION_POINTS = 6;
+const BASE_MOVEMENT_POINTS = 3;
 
 function emptyStats(): CharacterStats {
   return {
@@ -194,14 +200,9 @@ export function computeCharacterStats(stuff: DofusbookStuff): CharacterStats {
   stats.characteristics.agility += carac.base_ag ?? 0;
   stats.characteristics.wisdom += carac.base_sa ?? 0;
 
-  // Testé : ajouter stuff.stuffFm.fm.pa/pm (bonus de familier) rapproche le PA
-  // du total réel (10→11 PA sur le stuff d'exemple, vrai total 12) mais
-  // ÉLOIGNE le PM du réel (5→6 PM, vrai total 5 d'après le nom du stuff) —
-  // signal contradictoire, donc pas ajouté. Le total exact reste incertain
-  // (TODO) ; utiliser `apOverride`/`playerLifePointsOverride` pour la
-  // précision en attendant.
-  stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus;
-  stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus;
+  const familiarBonus = stuff.stuffFm?.fm ?? {};
+  stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus + (familiarBonus.pa ?? 0);
+  stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus + (familiarBonus.pm ?? 0);
 
   return stats;
 }
