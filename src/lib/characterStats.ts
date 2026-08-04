@@ -75,7 +75,7 @@ export interface CharacterStats {
     critResistancePercent: number;
   };
   mobility: Record<(typeof MOBILITY_CODES)[keyof typeof MOBILITY_CODES], number>;
-  /** PA/PM totaux (base 6 PA / 3 PM + bonus d'objets + bonus de familier/monture). */
+  /** PA/PM totaux (base 6 PA / 3 PM + bonus d'objets + bonus de Forgemagie). */
   actionPoints: number;
   movementPoints: number;
   /** Codes d'effet rencontrés mais pas encore modélisés (valeur moyenne sommée). */
@@ -85,19 +85,32 @@ export interface CharacterStats {
 /**
  * Base Ankama stricte : 6 PA / 3 PM. Les quêtes de récompense permanente
  * (PA/PM) n'existent PAS dans ce modèle : dofusbook ne connaît que l'état
- * d'un stuff (objets + familier), jamais l'état de compte/quêtes du joueur,
- * donc son propre PA/PM affiché ne peut être que base + objets + familier.
+ * d'un stuff (objets + Forgemagie), jamais l'état de compte/quêtes du
+ * joueur, donc son propre PA/PM affiché ne peut être que base + objets +
+ * Forgemagie.
  *
  * Ancienne hypothèse abandonnée : on avait mis cette base à 7/4 (+1/+1) en
  * supposant un bonus de quêtes universel, calibré sur un écart observé de
  * +1 PA/+1 PM entre notre calcul et l'affichage réel dofusbook sur deux
- * stuffs différents. En fait cet écart venait du bonus de FAMILIER
- * (`stuffFm.fm.pa/pm`, cf. plus bas) qu'on ne lisait pas encore — confirmé
- * en inspectant le JSON brut d'un stuff où `stuffFm.fm = {pa:1, pm:1}`
- * correspond exactement à l'écart observé. Lire la vraie donnée au lieu de
- * la deviner généralise correctement à n'importe quel familier (pas
- * seulement +1/+1).
+ * stuffs différents. En fait cet écart venait de bonus de FORGEMAGIE
+ * (`stuffFm.fm.pa/pm` — "fm" = ForgeMagie, PAS "familier" malgré les
+ * apparences ; cf. plus bas) qu'on ne lisait pas encore, confirmé par
+ * l'utilisateur après une première mauvaise interprétation de ce champ.
+ * Lire la vraie donnée au lieu de la deviner généralise correctement à
+ * n'importe quel choix de Forgemagie (pas seulement +1/+1).
  */
+/**
+ * PV de base (avant Vitalité), donnés par l'utilisateur et vérifiés sur deux
+ * personnages de classes différentes au niveau 200 (50 + 5×200 = 1050 dans
+ * les deux cas) : `50 + 5 × niveau`. Uniforme entre classes (contrairement à
+ * l'ancien Dofus) — cohérent avec le fait que dofusbook, qui ne connaît que
+ * le niveau et pas de table par classe, n'aurait pas pu calculer un total
+ * correct sinon.
+ */
+export function basePlayerLifePoints(level: number): number {
+  return 50 + 5 * level;
+}
+
 const BASE_ACTION_POINTS = 6;
 const BASE_MOVEMENT_POINTS = 3;
 
@@ -200,9 +213,9 @@ export function computeCharacterStats(stuff: DofusbookStuff): CharacterStats {
   stats.characteristics.agility += carac.base_ag ?? 0;
   stats.characteristics.wisdom += carac.base_sa ?? 0;
 
-  const familiarBonus = stuff.stuffFm?.fm ?? {};
-  stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus + (familiarBonus.pa ?? 0);
-  stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus + (familiarBonus.pm ?? 0);
+  const forgemagieBonus = stuff.stuffFm?.fm ?? {};
+  stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus + (forgemagieBonus.pa ?? 0);
+  stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus + (forgemagieBonus.pm ?? 0);
 
   return stats;
 }

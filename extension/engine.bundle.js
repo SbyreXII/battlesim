@@ -553,6 +553,9 @@ var MOBILITY_CODES = {
   ta: "tacklePercent",
   fu: "fuitePercent"
 };
+function basePlayerLifePoints(level) {
+  return 50 + 5 * level;
+}
 var BASE_ACTION_POINTS = 6;
 var BASE_MOVEMENT_POINTS = 3;
 function emptyStats() {
@@ -617,9 +620,9 @@ function computeCharacterStats(stuff) {
   stats.characteristics.chance += carac.base_ch ?? 0;
   stats.characteristics.agility += carac.base_ag ?? 0;
   stats.characteristics.wisdom += carac.base_sa ?? 0;
-  const familiarBonus = stuff.stuffFm?.fm ?? {};
-  stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus + (familiarBonus.pa ?? 0);
-  stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus + (familiarBonus.pm ?? 0);
+  const forgemagieBonus = stuff.stuffFm?.fm ?? {};
+  stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus + (forgemagieBonus.pa ?? 0);
+  stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus + (forgemagieBonus.pm ?? 0);
   return stats;
 }
 
@@ -1261,7 +1264,7 @@ async function runSimulation(input) {
     critResistancePercent: stats.defense.critResistancePercent
   };
   const playerLifePointsIsApprox = input.playerLifePointsOverride === void 0;
-  const playerLifePoints = input.playerLifePointsOverride ?? Math.round(stats.characteristics.vitality);
+  const playerLifePoints = input.playerLifePointsOverride ?? Math.round(basePlayerLifePoints(stuff.character_level) + stats.characteristics.vitality);
   const race = simulateRace(
     damageSpells,
     casterScheduleFor(stats, best.buffs, apPerTurn),

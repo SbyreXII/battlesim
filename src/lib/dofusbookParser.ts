@@ -7,11 +7,13 @@ export interface DofusbookStuff {
   stuffItem: Record<string, number | null>;
   items: unknown[];
   /**
-   * Bonus PA/PM du familier/monture choisi dans l'éditeur dofusbook (`fm`),
-   * absent si aucun familier n'est configuré. Seule source de PA/PM en plus
-   * des objets dans ce JSON — dofusbook n'a aucune connaissance des quêtes
-   * de récompense du compte (état non stocké dans un stuff), donc son PA/PM
-   * affiché est forcément `base + objets + familier`, rien de plus.
+   * Bonus PA/PM de Forgemagie choisi dans l'éditeur dofusbook (`stuffFm.fm`
+   * — "fm" = ForgeMagie, PAS "familier" malgré ce que le nom du champ
+   * suggère), absent si aucune Forgemagie PA/PM n'est configurée. Seule
+   * source de PA/PM en plus des objets dans ce JSON — dofusbook n'a aucune
+   * connaissance des quêtes de récompense du compte (état non stocké dans
+   * un stuff), donc son PA/PM affiché est forcément `base + objets +
+   * Forgemagie`, rien de plus.
    */
   stuffFm?: { fm?: { pa?: number; pm?: number } } | null;
   [key: string]: unknown;

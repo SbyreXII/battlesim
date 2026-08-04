@@ -1,5 +1,5 @@
 import { parseStuffJson } from "./dofusbookParser.js";
-import { computeCharacterStats } from "./characterStats.js";
+import { computeCharacterStats, basePlayerLifePoints } from "./characterStats.js";
 import { getBreedById } from "./dofusdb.js";
 import { resolveDamageSpellsWithCoverage, resolveBuffSpells, resolveMonsterDamageSpells } from "./spellCatalog.js";
 import { resolveWeaponAttack } from "./weaponAttack.js";
@@ -174,12 +174,14 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
     critResistancePercent: stats.defense.critResistancePercent,
   };
 
-  // Approximation grossière et sous-estimée si pas d'override fourni : la
-  // Vitalité seule ignore les PV de base classe/niveau ET le bonus des
-  // parchemins de Vitalité (vérifié avec un utilisateur : ~4300 PV réels en
-  // jeu contre une bien plus petite approximation par ce calcul).
+  // PV = 50 + 5×niveau (formule donnée et vérifiée par un utilisateur, cf.
+  // basePlayerLifePoints) + Vitalité. Reste une approximation si pas
+  // d'override : ignore d'éventuels bonus de PV non modélisés (ex: certains
+  // sorts/passifs de classe qui donnent des PV bonus hors Vitalité).
   const playerLifePointsIsApprox = input.playerLifePointsOverride === undefined;
-  const playerLifePoints = input.playerLifePointsOverride ?? Math.round(stats.characteristics.vitality);
+  const playerLifePoints =
+    input.playerLifePointsOverride ??
+    Math.round(basePlayerLifePoints(stuff.character_level) + stats.characteristics.vitality);
 
   const race = simulateRace(
     damageSpells,

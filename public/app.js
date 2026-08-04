@@ -145,8 +145,8 @@ function raceHtml(race) {
     ? `<span class="badge good">Tu gagnes</span> en ${race.turnsToKillMonster} tours`
     : `<span class="badge warn">Tu perds</span> — le monstre te tue au tour ${race.turnsToKillPlayer} (avant que tu ne le tues)`;
   const pvNote = race.playerLifePointsIsApprox
-    ? `PV du joueur : <strong>${race.playerLifePoints} (estimation, probablement sous-évaluée)</strong> —
-       Vitalité seule, sans les PV de base classe/niveau ni les parchemins. Renseigne tes vrais PV
+    ? `PV du joueur : <strong>${race.playerLifePoints} (estimation : 50 + 5×niveau + Vitalité)</strong> —
+       peut manquer d'éventuels bonus de PV non modélisés. Renseigne tes vrais PV
        (visibles sur ta fiche personnage en jeu) dans le champ "PV réels du joueur" pour un résultat fiable.`
     : `PV du joueur : <strong>${race.playerLifePoints}</strong> (valeur réelle que tu as renseignée).`;
   return `<p>${badge}</p>
