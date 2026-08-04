@@ -3,6 +3,7 @@ import { computeCharacterStats } from "./characterStats.js";
 import { getBreedById } from "./dofusdb.js";
 import { resolveDamageSpells, resolveBuffSpells, resolveMonsterDamageSpells } from "./spellCatalog.js";
 import { resolveWeaponAttack } from "./weaponAttack.js";
+import { assessKiteFeasibility, splitMonsterSpellsByRange } from "./kiteAnalysis.js";
 import { parseDofensiveLink } from "./dofensiveParser.js";
 import {
   planOptimalFight,
@@ -95,6 +96,19 @@ export interface SimulationResult {
     /** false si `playerLifePointsOverride` a été fourni en entrée (valeur réelle, fiable). */
     playerLifePointsIsApprox: boolean;
   };
+  /**
+   * Estimation très simplifiée (pas de vrai modèle positionnel — voir
+   * kiteAnalysis.ts) : si `possible`, résultat de la course en supposant que
+   * le joueur reste hors de portée des sorts de mêlée du monstre (portée
+   * ≤ 1) pendant tout le combat.
+   */
+  kite: {
+    possible: boolean;
+    reason: string;
+    outcome: "player_wins" | "monster_wins" | null;
+    turnsToKillMonster: number | null;
+    turnsToKillPlayer: number | null;
+  };
 }
 
 const EMPTY_TURN_VIEW: TurnPlanView = { entries: [], totalApUsed: 0, totalDamage: 0 };
@@ -157,6 +171,31 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
   );
   const firstRound = race.rounds[0];
 
+  const kiteFeasibility = assessKiteFeasibility(damageSpells, stats.movementPoints, grade.movementPoints);
+  const kite: SimulationResult["kite"] = kiteFeasibility.possible
+    ? (() => {
+        const { ranged } = splitMonsterSpellsByRange(monsterSpells);
+        const kiteRace = simulateRace(
+          damageSpells,
+          casterScheduleFor(stats, best.buffs, apPerTurn),
+          monsterTarget,
+          grade.lifePoints,
+          ranged,
+          monsterAttacker,
+          grade.actionPoints,
+          playerTarget,
+          playerLifePoints,
+        );
+        return {
+          possible: true,
+          reason: kiteFeasibility.reason,
+          outcome: kiteRace.outcome,
+          turnsToKillMonster: kiteRace.turnsToKillMonster,
+          turnsToKillPlayer: kiteRace.turnsToKillPlayer,
+        };
+      })()
+    : { possible: false, reason: kiteFeasibility.reason, outcome: null, turnsToKillMonster: null, turnsToKillPlayer: null };
+
   return {
     character: {
       name: stuff.name,
@@ -205,5 +244,6 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
       playerLifePoints,
       playerLifePointsIsApprox,
     },
+    kite,
   };
 }

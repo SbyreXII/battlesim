@@ -107,6 +107,19 @@ function raceHtml(race) {
     <p class="coverage-note">Hypothèse : le joueur agit en premier à chaque tour (pas de vraie gestion d'initiative).</p>`;
 }
 
+function kiteHtml(kite) {
+  if (!kite.possible) {
+    return `<p><span class="badge warn">Kite non viable</span> — ${kite.reason}</p>`;
+  }
+  const won = kite.outcome === "player_wins";
+  const badge = won
+    ? `<span class="badge good">Tu gagnes en kitant</span> en ${kite.turnsToKillMonster} tours`
+    : `<span class="badge warn">Tu perds quand même</span> — tué au tour ${kite.turnsToKillPlayer} même en kitant`;
+  return `<p>${badge}</p>
+    <p class="coverage-note">${kite.reason} On suppose que tu restes hors de portée des sorts de mêlée du monstre pendant tout le combat —
+    estimation optimiste : la vraie chance d'y arriver dépend du Tacle du monstre contre ta Fuite, pas modélisé ici.</p>`;
+}
+
 function render(data) {
   const c = data.character;
   const m = data.monster;
@@ -168,6 +181,9 @@ function render(data) {
 
     <div class="section-title">Qui gagne ?</div>
     ${raceHtml(data.race)}
+
+    <div class="section-title">Et en kitant ?</div>
+    ${kiteHtml(data.kite)}
   `;
 
   resultsPanel.hidden = false;

@@ -58,6 +58,12 @@ const RESISTANCE_FIXED_CODES = {
   ra: "air",
 } as const;
 
+/** Mobilité : Tacle (retient un ennemi adjacent) et Fuite (échapper au tacle adverse). */
+const MOBILITY_CODES = {
+  ta: "tacklePercent",
+  fu: "fuitePercent",
+} as const;
+
 export interface CharacterStats {
   characteristics: Record<(typeof CHARACTERISTIC_CODES)[keyof typeof CHARACTERISTIC_CODES], number>;
   elementalFixedDamage: Record<(typeof ELEMENTAL_FIXED_DAMAGE_CODES)[keyof typeof ELEMENTAL_FIXED_DAMAGE_CODES], number>;
@@ -68,6 +74,7 @@ export interface CharacterStats {
     /** "rc" : Résistance Critique — réduit la chance d'être touché par un critique adverse. */
     critResistancePercent: number;
   };
+  mobility: Record<(typeof MOBILITY_CODES)[keyof typeof MOBILITY_CODES], number>;
   /** PA/PM totaux (base 6 PA / 3 PM + bonus d'objets ; monture non comptée). */
   actionPoints: number;
   movementPoints: number;
@@ -98,6 +105,7 @@ function emptyStats(): CharacterStats {
       resistanceFixed: { neutral: 0, earth: 0, fire: 0, water: 0, air: 0 },
       critResistancePercent: 0,
     },
+    mobility: { tacklePercent: 0, fuitePercent: 0 },
     actionPoints: BASE_ACTION_POINTS,
     movementPoints: BASE_MOVEMENT_POINTS,
     raw: {},
@@ -122,6 +130,9 @@ function addEffect(stats: CharacterStats, code: string, amount: number) {
     stats.defense.resistanceFixed[key] += amount;
   } else if (code === "rc") {
     stats.defense.critResistancePercent += amount;
+  } else if (code in MOBILITY_CODES) {
+    const key = MOBILITY_CODES[code as keyof typeof MOBILITY_CODES];
+    stats.mobility[key] += amount;
   } else {
     stats.raw[code] = (stats.raw[code] ?? 0) + amount;
   }

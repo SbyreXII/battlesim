@@ -68,7 +68,7 @@ Le moteur de dégâts a été vérifié empiriquement (comparaison avec les vale
 - **Effets conditionnels/cumulatifs** : les sorts dont les dégâts dépendent d'un état de jeu (ex: augmentent à chaque lancer, ou changent de cible) ne comptent que leur valeur de base. Ça inclut ce qu'on appelle parfois "sorts passifs" (ex: Accumulation, Pugilat chez l'Iop) — recherché spécifiquement, et il s'avère que ce ne sont pas de simples bonus fixes toujours actifs mais des mécaniques de stack conditionnelles ("lancer un sort augmente les dégâts, l'effet se dissipe après avoir infligé des dégâts") : même catégorie de limite que les sorts à effet cumulatif, pas un système séparé à ajouter.
 - **Combinaisons de buffs** : testées (tous les sous-ensembles), mais la durée du groupe est simplifiée au minimum des durées individuelles — après l'expiration du premier buff du groupe, on repasse directement à "sans buff" plutôt que de ne retirer que celui-là.
 - **Initiative** : la simulation "qui gagne" suppose que le joueur agit toujours en premier — pas de vraie gestion d'ordre de passage.
-- **Kite** (Tacle, Fuite, retrait PM/PA, esquive) : pas encore modélisé.
+- **Kite** : estimation très simplifiée, faute de tout modèle positionnel (pas de grille, pas de ligne de vue). Le kite est jugé "possible" si le joueur a un sort à portée > 1 et au moins autant de PM que le monstre ; si oui, on suppose qu'il évite tous les sorts de mêlée (portée ≤ 1) du monstre pour le reste du combat. La vraie chance d'y arriver dépend du Tacle du monstre contre la Fuite du joueur, dont la formule officielle n'est pas connue ici — donc optimiste si le monstre a un gros Tacle.
 
 ## Développement
 

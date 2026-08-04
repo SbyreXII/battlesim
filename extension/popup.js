@@ -149,6 +149,15 @@ function raceHtml(race) {
   return `<p>${badge}</p><p class="coverage-note">${pvNote}</p>`;
 }
 
+function kiteHtml(kite) {
+  if (!kite.possible) return `<p><span class="badge warn">Non viable</span> — ${kite.reason}</p>`;
+  const won = kite.outcome === "player_wins";
+  const badge = won
+    ? `<span class="badge good">Tu gagnes en kitant</span> en ${kite.turnsToKillMonster} tours`
+    : `<span class="badge warn">Tu perds quand même</span> — tué au tour ${kite.turnsToKillPlayer}`;
+  return `<p>${badge}</p><p class="coverage-note">Estimation optimiste (Tacle du monstre non modélisé).</p>`;
+}
+
 function render(data) {
   const c = data.character;
   const m = data.monster;
@@ -181,6 +190,9 @@ function render(data) {
 
     <div class="section-title">Qui gagne ?</div>
     ${raceHtml(data.race)}
+
+    <div class="section-title">Et en kitant ?</div>
+    ${kiteHtml(data.kite)}
   `;
   resultsEl.hidden = false;
 }
