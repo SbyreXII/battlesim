@@ -2,6 +2,7 @@ import { parseStuffJson } from "./dofusbookParser.js";
 import { computeCharacterStats } from "./characterStats.js";
 import { getBreedById } from "./dofusdb.js";
 import { resolveDamageSpells, resolveBuffSpells, resolveMonsterDamageSpells } from "./spellCatalog.js";
+import { resolveWeaponAttack } from "./weaponAttack.js";
 import { parseDofensiveLink } from "./dofensiveParser.js";
 import {
   planOptimalFight,
@@ -104,10 +105,12 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
   const apPerTurn = input.apOverride ?? stats.actionPoints;
 
   const breed = await getBreedById(stuff.character_class);
-  const [damageSpells, buffSpells] = await Promise.all([
+  const [spellDamageOptions, buffSpells] = await Promise.all([
     resolveDamageSpells(breed.breedSpellsId, stuff.character_level),
     resolveBuffSpells(breed.breedSpellsId, stuff.character_level),
   ]);
+  const weaponAttack = resolveWeaponAttack(stuff);
+  const damageSpells = weaponAttack ? [...spellDamageOptions, weaponAttack] : spellDamageOptions;
 
   const { monster, grade } = await parseDofensiveLink(input.monsterLink);
   const monsterTarget: TargetProfile = { resistancePercent: monsterGradeToResistances(grade) };
@@ -169,7 +172,7 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
       actionPoints: grade.actionPoints,
     },
     spellCoverage: {
-      damageResolved: damageSpells.length,
+      damageResolved: spellDamageOptions.length,
       damageTotal: breed.breedSpellsId.length,
       buffResolved: buffSpells.length,
     },
