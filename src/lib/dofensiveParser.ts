@@ -36,7 +36,18 @@ function decodeState(url: URL): DofensiveState | null {
 }
 
 export async function parseDofensiveLink(link: string): Promise<ParsedMonster> {
-  const url = new URL(link);
+  let url: URL;
+  try {
+    url = new URL(link);
+  } catch {
+    throw new Error(
+      `"${link}" n'est pas une URL valide. Colle un lien complet du type ` +
+        `https://dofensive.com/fr/monster/2819?q=...`,
+    );
+  }
+  if (url.hostname.toLowerCase() !== "dofensive.com" && !url.hostname.toLowerCase().endsWith(".dofensive.com")) {
+    throw new Error(`"${link}" ne semble pas être un lien dofensive.com.`);
+  }
   const monsterIdFromPath = extractMonsterId(url);
   const state = decodeState(url);
 

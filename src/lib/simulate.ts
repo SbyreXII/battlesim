@@ -69,6 +69,13 @@ export interface SimulationResult {
      * À utiliser comme indice de recoupement, pas comme source fiable.
      */
     titleHint: { pa: number | null; pm: number | null };
+    /**
+     * Codes d'effet d'objet rencontrés mais pas encore modélisés par le
+     * moteur (ex: Prospection, Portée...), avec leur valeur moyenne sommée.
+     * Affiché pour expliquer honnêtement les écarts PA/PM/PV constatés
+     * plutôt que de les laisser silencieusement de côté.
+     */
+    unmodeledEffects: Record<string, number>;
   };
   monster: {
     name: string;
@@ -222,6 +229,7 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
       agility: Math.round(stats.characteristics.agility),
       vitality: Math.round(stats.characteristics.vitality),
       titleHint,
+      unmodeledEffects: stats.raw,
     },
     monster: {
       name: monster.name.fr,

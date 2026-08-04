@@ -7,7 +7,7 @@
     "default_popup": "popup.html",
     "default_title": "BattleSim"
   },
-  "permissions": ["activeTab", "scripting", "tabs"],
+  "permissions": ["activeTab", "scripting", "tabs", "storage"],
   "host_permissions": [
     "https://www.dofusbook.net/*",
     "https://dofusbook.net/*",

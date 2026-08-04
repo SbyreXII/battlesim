@@ -10,6 +10,34 @@ async function dofusDbGet<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+/**
+ * Cache mémoire par id, partagé pour la durée de vie du process serveur. Les
+ * données DofusDB (sorts, monstres, classes) ne changent pas pendant qu'on
+ * tourne, et une seule simulation redemande souvent le même sort/niveau
+ * plusieurs fois (sorts partagés entre grades de monstre, sorts de buff
+ * revus pour chaque combinaison testée, etc.) — sans compter les essais
+ * répétés de l'utilisateur sur le même stuff/monstre. Simplification
+ * assumée : pas d'expiration ni de limite de taille (le référentiel
+ * DofusDB est petit et statique à l'échelle d'un process).
+ */
+function withCache<TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
+  keyOf: (...args: TArgs) => string,
+): (...args: TArgs) => Promise<TResult> {
+  const cache = new Map<string, Promise<TResult>>();
+  return (...args: TArgs) => {
+    const key = keyOf(...args);
+    const cached = cache.get(key);
+    if (cached) return cached;
+    const promise = fn(...args).catch((err) => {
+      cache.delete(key); // ne pas garder en cache un échec (ex: DofusDB temporairement indisponible)
+      throw err;
+    });
+    cache.set(key, promise);
+    return promise;
+  };
+}
+
 export interface DofusDbMonsterGrade {
   grade: number;
   level: number;
@@ -52,14 +80,14 @@ export interface DofusDbMonster {
   spellGrades: string[];
 }
 
-export async function getMonsterById(id: number): Promise<DofusDbMonster> {
+export const getMonsterById = withCache(async (id: number): Promise<DofusDbMonster> => {
   const result = await dofusDbGet<{ total: number; data: DofusDbMonster[] }>(
     `/monsters?id=${id}`,
   );
   const monster = result.data[0];
   if (!monster) throw new Error(`Monstre DofusDB introuvable pour l'id ${id}`);
   return monster;
-}
+}, String);
 
 export interface DofusDbSpell {
   id: number;
@@ -68,14 +96,14 @@ export interface DofusDbSpell {
   spellLevels: number[];
 }
 
-export async function getSpellById(id: number): Promise<DofusDbSpell> {
+export const getSpellById = withCache(async (id: number): Promise<DofusDbSpell> => {
   const result = await dofusDbGet<{ total: number; data: DofusDbSpell[] }>(
     `/spells?id=${id}`,
   );
   const spell = result.data[0];
   if (!spell) throw new Error(`Sort DofusDB introuvable pour l'id ${id}`);
   return spell;
-}
+}, String);
 
 export interface DofusDbSpellEffect {
   effectId: number;
@@ -101,28 +129,28 @@ export interface DofusDbSpellLevel {
   criticalEffect: DofusDbSpellEffect[];
 }
 
-export async function getSpellLevelById(id: number): Promise<DofusDbSpellLevel> {
+export const getSpellLevelById = withCache(async (id: number): Promise<DofusDbSpellLevel> => {
   const result = await dofusDbGet<{ total: number; data: DofusDbSpellLevel[] }>(
     `/spell-levels?id=${id}`,
   );
   const level = result.data[0];
   if (!level) throw new Error(`SpellLevel DofusDB introuvable pour l'id ${id}`);
   return level;
-}
+}, String);
 
 export interface DofusDbBreed {
   id: number;
   breedSpellsId: number[];
 }
 
-export async function getBreedById(id: number): Promise<DofusDbBreed> {
+export const getBreedById = withCache(async (id: number): Promise<DofusDbBreed> => {
   const result = await dofusDbGet<{ total: number; data: DofusDbBreed[] }>(
     `/breeds?id=${id}`,
   );
   const breed = result.data[0];
   if (!breed) throw new Error(`Classe DofusDB introuvable pour l'id ${id}`);
   return breed;
-}
+}, String);
 
 /**
  * Renvoie le meilleur spell-level (le plus haut grade débloqué) pour un sort

@@ -13,6 +13,44 @@ const loadingPanel = document.getElementById("loading-panel");
 const EXAMPLE_MONSTER_LINK =
   "https://dofensive.com/fr/monster/2819?q=N4IgygpgNhDGAuEAmBZA9gOwM6IE4gC4AmADgEYBOAGhHWzy0NFMqZAHFcBDJCQsmmAAO0KIwIBtALoBfOUA";
 
+// Mémorise les derniers inputs pour éviter de tout recoller à chaque test
+// (ex: ajuster un override PA/PM après un premier calcul). Rien de sensible :
+// juste ce qu'on a déjà collé dans le formulaire, stocké localement.
+const STORAGE_KEY = "battlesim-last-inputs";
+
+function saveInputsToStorage() {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        stuffJson: stuffJsonEl.value,
+        monsterLink: monsterLinkEl.value,
+        apOverride: apOverrideEl.value,
+        pmOverride: pmOverrideEl.value,
+        pvOverride: pvOverrideEl.value,
+      }),
+    );
+  } catch {
+    // stockage indisponible (mode privé, quota...) : tant pis, pas bloquant
+  }
+}
+
+function restoreInputsFromStorage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+    if (!saved) return;
+    stuffJsonEl.value = saved.stuffJson ?? "";
+    monsterLinkEl.value = saved.monsterLink ?? "";
+    apOverrideEl.value = saved.apOverride ?? "";
+    pmOverrideEl.value = saved.pmOverride ?? "";
+    pvOverrideEl.value = saved.pvOverride ?? "";
+  } catch {
+    // JSON corrompu ou stockage indisponible : on repart d'un formulaire vide
+  }
+}
+
+restoreInputsFromStorage();
+
 exampleBtn.addEventListener("click", async () => {
   const res = await fetch("/fixtures/sample-stuff.json");
   stuffJsonEl.value = await res.text();
@@ -53,6 +91,7 @@ submitBtn.addEventListener("click", async () => {
   resultsPanel.hidden = true;
   loadingPanel.hidden = false;
   submitBtn.disabled = true;
+  saveInputsToStorage();
 
   try {
     const apOverride = apOverrideEl.value ? Number(apOverrideEl.value) : undefined;
@@ -137,6 +176,13 @@ function titleHintHtml(c) {
   return `<p class="coverage-note">Titre du stuff : "${parts.join(" / ")}" (texte libre, non vérifié) — ${note}</p>`;
 }
 
+function unmodeledEffectsHtml(c) {
+  const codes = Object.keys(c.unmodeledEffects);
+  if (codes.length === 0) return "";
+  const list = codes.map((code) => `${code} (${Math.round(c.unmodeledEffects[code])})`).join(", ");
+  return `<p class="coverage-note">${codes.length} effet(s) d'objet non pris en compte dans le calcul : ${list}. Ça peut expliquer un écart avec tes vraies stats en jeu.</p>`;
+}
+
 function render(data) {
   const c = data.character;
   const m = data.monster;
@@ -180,6 +226,7 @@ function render(data) {
     </div>
     ${titleHintHtml(c)}
     <p class="coverage-note">${data.spellCoverage.damageResolved}/${data.spellCoverage.damageTotal} sorts de dégâts reconnus, ${data.spellCoverage.buffResolved} sort(s) de buff.</p>
+    ${unmodeledEffectsHtml(c)}
 
     <div class="section-title">Cible : ${m.name} (grade ${m.grade}, niv. ${m.level})</div>
     <p>${m.lifePoints} PV, ${m.actionPoints} PA</p>

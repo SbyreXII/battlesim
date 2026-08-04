@@ -15,6 +15,29 @@ const resultsEl = document.getElementById("results");
 
 let detectedStuffJson = null;
 
+// Les PA/PM/PV réels du joueur changent rarement d'un combat à l'autre : on
+// les mémorise entre deux ouvertures du popup (son DOM est recréé à chaque
+// fois) pour éviter de les retaper à chaque monstre testé.
+const OVERRIDES_STORAGE_KEY = "battlesim-overrides";
+
+chrome.storage.local.get([OVERRIDES_STORAGE_KEY], (result) => {
+  const saved = result[OVERRIDES_STORAGE_KEY];
+  if (!saved) return;
+  apOverrideEl.value = saved.apOverride ?? "";
+  pmOverrideEl.value = saved.pmOverride ?? "";
+  pvOverrideEl.value = saved.pvOverride ?? "";
+});
+
+function saveOverridesToStorage() {
+  chrome.storage.local.set({
+    [OVERRIDES_STORAGE_KEY]: {
+      apOverride: apOverrideEl.value,
+      pmOverride: pmOverrideEl.value,
+      pvOverride: pvOverrideEl.value,
+    },
+  });
+}
+
 // Exécutée DANS l'onglet dofusbook.net (même origine : pas de blocage
 // Cloudflare/CORS, contrairement à un appel depuis le popup de l'extension).
 async function extractStuffFromPage() {
@@ -88,6 +111,7 @@ submitBtn.addEventListener("click", async () => {
   resultsEl.hidden = true;
   submitBtn.disabled = true;
   submitBtn.textContent = "Calcul…";
+  saveOverridesToStorage();
 
   try {
     const stuffJson = detectedStuffJson ?? stuffJsonEl.value;
@@ -175,6 +199,13 @@ function titleHintHtml(c) {
   return `<p class="coverage-note">Titre : "${parts.join(" / ")}" — ${note}</p>`;
 }
 
+function unmodeledEffectsHtml(c) {
+  const codes = Object.keys(c.unmodeledEffects ?? {});
+  if (codes.length === 0) return "";
+  const list = codes.map((code) => `${code} (${Math.round(c.unmodeledEffects[code])})`).join(", ");
+  return `<p class="coverage-note">${codes.length} effet(s) non pris en compte : ${list}</p>`;
+}
+
 function render(data) {
   const c = data.character;
   const m = data.monster;
@@ -195,6 +226,7 @@ function render(data) {
     <p class="coverage-note">Int ${c.intelligence} · For ${c.strength} · Cha ${c.chance} · Agi ${c.agility} · Vit ${c.vitality}</p>
     ${titleHintHtml(c)}
     <p class="coverage-note">${data.spellCoverage.damageResolved}/${data.spellCoverage.damageTotal} sorts reconnus</p>
+    ${unmodeledEffectsHtml(c)}
 
     <div class="section-title">${m.name} (grade ${m.grade}, ${m.lifePoints} PV)</div>
     ${turnPlanHtml(pa.baselineTurn)}

@@ -11,6 +11,8 @@ Prototype d'optimiseur de dégâts Dofus : donne un stuff [dofusbook.net](https:
 - Dégâts infligés par le monstre en retour
 - Simulation du combat tour par tour dans les deux sens pour déterminer qui gagne
 - Trois façons d'utiliser l'outil : site web, bookmarklet, ou [extension navigateur](extension/README.md)
+- Transparence sur les effets d'objets non pris en compte dans le calcul (aide à comprendre les écarts avec tes vraies stats)
+- Derniers inputs mémorisés automatiquement (site : stuff/monstre/overrides ; extension : overrides) pour ne pas tout recoller à chaque test
 
 ## Installation
 
