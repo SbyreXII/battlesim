@@ -75,6 +75,21 @@ test("les dégâts ne descendent jamais sous 0", () => {
   assert.equal(result.averageNormalHit, 0);
 });
 
+test("un dégât fixe DofusDB (max=0, convention 'pas de jet') n'est pas divisé par 2", () => {
+  // Cas réel : "Substitution Funèbre" du monstre Gein, diceNum=40, diceSide=0,
+  // Intelligence=1200 -> dofensive.com affiche 520 (40 × (1+1200/100)).
+  // Avant le fix, une moyenne (min+max)/2 aurait donné 260, moitié moins.
+  const result = computeSpellDamage({
+    element: "neutral",
+    normalDamage: { min: 520, max: 0 },
+    criticalDamage: { min: 520, max: 0 },
+    critChancePercent: 0,
+    caster: attacker(),
+    targetResistancePercent: 0,
+  });
+  assert.equal(result.averageNormalHit, 520);
+});
+
 test("l'espérance pondère normal et critique par la chance de critique", () => {
   const result = computeSpellDamage({
     element: "neutral",

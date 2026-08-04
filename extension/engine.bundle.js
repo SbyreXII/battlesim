@@ -740,6 +740,7 @@ var ELEMENT_CHARACTERISTIC = {
   air: "agility"
 };
 function average(roll) {
+  if (roll.max === 0) return roll.min;
   return (roll.min + roll.max) / 2;
 }
 function computeSpellDamage(input) {
