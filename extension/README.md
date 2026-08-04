@@ -2,15 +2,7 @@
 
 Extension de navigateur (Chrome, Brave, Edge, et autres navigateurs basés sur Chromium) qui récupère automatiquement le stuff dofusbook.net ouvert dans l'onglet actif et le teste contre un monstre dofensive.com, sans copier-coller.
 
-## Prérequis
-
-Le serveur local BattleSim doit tourner pendant que tu utilises l'extension :
-
-```bash
-npm run start
-```
-
-L'extension appelle `http://localhost:3000` pour faire les calculs — si le serveur n'est pas lancé, elle affiche une erreur claire te le rappelant.
+**Autonome : aucun serveur à lancer.** Le moteur de calcul tourne entièrement dans le popup de l'extension (fichier `engine.bundle.js`, déjà généré et versionné dans ce dossier) — il appelle directement l'API ouverte de DofusDB, sans passer par le serveur Node du site.
 
 ## Installation
 
@@ -47,7 +39,19 @@ Plus simple : dofensive.com n'a pas de protection équivalente, donc l'extension
 
 ### Le calcul
 
-Une fois le stuff et le lien monstre en main, l'extension envoie tout au serveur local (`POST http://localhost:3000/api/simulate`), qui fait tout le travail : récupération des sorts et caractéristiques (DofusDB), calcul des dégâts dans les deux sens, et simulation du combat tour par tour pour déterminer qui gagne. Le popup affiche juste le résultat.
+Une fois le stuff et le lien monstre en main, le popup appelle directement `runSimulation()`, le même moteur que celui utilisé par le site (récupération des sorts et caractéristiques sur DofusDB, calcul des dégâts dans les deux sens, simulation du combat tour par tour). Ce moteur est écrit en TypeScript dans `src/lib`/`src/engine` à la racine du projet, et **compilé en un seul fichier JavaScript autonome** (`engine.bundle.js`) via [esbuild](https://esbuild.github.io/), pour pouvoir tourner directement dans le popup sans dépendre de Node ni d'un serveur.
+
+Les appels à DofusDB depuis le popup fonctionnent sans blocage CORS grâce à `host_permissions` sur `api.dofusdb.fr` déclaré dans `manifest.json` — les extensions Chrome sont dispensées de la politique CORS classique pour les hôtes qu'elles déclarent explicitement.
+
+### Régénérer `engine.bundle.js`
+
+Nécessaire seulement si tu modifies le moteur de calcul (`src/lib`, `src/engine`) et veux que l'extension reflète le changement :
+
+```bash
+npm run build:extension
+```
+
+Puis recharge l'extension dans `chrome://extensions` (icône ↻) pour que le popup charge la nouvelle version.
 
 ## Permissions demandées
 
@@ -55,13 +59,15 @@ Déclarées dans `manifest.json` :
 
 - **`activeTab` / `scripting`** — pour exécuter le script de récupération dans l'onglet dofusbook.net actif.
 - **`tabs`** — pour lire l'URL d'un onglet dofensive.com ouvert (pré-remplissage du lien monstre).
-- **`host_permissions`** sur `dofusbook.net` et `localhost:3000` — nécessaires pour que ces appels ne soient pas bloqués par la politique de sécurité du navigateur (CORS).
+- **`storage`** — pour mémoriser tes overrides (PA/PM/PV) et le dernier monstre testé entre deux ouvertures du popup.
+- **`host_permissions`** sur `dofusbook.net` (récupération du stuff, même origine) et `api.dofusdb.fr` (calcul, appelé en direct depuis le popup).
 
-L'extension ne collecte ni n'envoie aucune donnée ailleurs qu'au serveur local que tu fais tourner toi-même.
+L'extension ne collecte ni n'envoie aucune donnée à un serveur tiers autre que l'API ouverte de DofusDB (sorts, monstres, classes — aucune donnée personnelle).
 
 ## Dépannage
 
-- **Rien ne se passe / erreur "Impossible de contacter le serveur"** → vérifie que `npm run start` tourne bien.
 - **Le stuff n'est pas détecté** → assure-toi d'être sur une page dofusbook.net qui contient l'id du stuff dans l'URL (la page du stuff lui-même, pas une liste). Sinon, colle le JSON manuellement.
-- **Sous Brave** → si le bouclier ("Shields") bloque quelque chose sans message clair, essaie de le désactiver pour `dofusbook.net` et de vérifier qu'il n'y a pas de restriction sur les connexions à `localhost`.
+- **Erreur au clic sur "Calculer"** → le message affiché vient directement du moteur (ex: lien monstre invalide, DofusDB indisponible) ; il est normalement assez explicite pour savoir quoi corriger.
+- **Sous Brave** → si le bouclier ("Shields") bloque quelque chose sans message clair, essaie de le désactiver pour `dofusbook.net` et `api.dofusdb.fr`.
 - **Presse-papier inaccessible** (pour le collage manuel) → le navigateur peut demander une autorisation la première fois ; accepte-la, ou colle avec Ctrl+V directement dans le champ.
+- **Après un `git pull`** → si `src/lib`/`src/engine` a changé, régénère le bundle (`npm run build:extension`) et recharge l'extension, sinon elle continue de tourner sur l'ancienne version du moteur.

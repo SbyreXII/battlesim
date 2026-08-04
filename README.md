@@ -10,7 +10,7 @@ Prototype d'optimiseur de dégâts Dofus : donne un stuff [dofusbook.net](https:
 - Analyse "faut-il se booster avant d'attaquer" (comparaison avec/sans buff)
 - Dégâts infligés par le monstre en retour
 - Simulation du combat tour par tour dans les deux sens pour déterminer qui gagne
-- Trois façons d'utiliser l'outil : site web, bookmarklet, ou [extension navigateur](extension/README.md)
+- Trois façons d'utiliser l'outil : site web, bookmarklet, ou [extension navigateur](extension/README.md) (celle-ci est autonome — pas besoin de lancer le serveur)
 - Transparence sur les effets d'objets et les sorts non pris en compte dans le calcul (aide à comprendre les écarts avec tes vraies stats)
 - Derniers inputs mémorisés automatiquement (site : stuff/monstre/overrides ; extension : overrides + dernier monstre testé) pour ne pas tout recoller à chaque test
 - Requêtes DofusDB mises en cache et réessayées automatiquement en cas d'erreur transitoire, pour des calculs plus rapides et plus fiables

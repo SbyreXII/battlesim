@@ -1,4 +1,6 @@
-const API_BASE = "http://localhost:3000";
+// Moteur de calcul embarqué (voir README.md pour comment le régénérer) :
+// aucun serveur local requis, l'extension tourne de façon autonome.
+import { runSimulation } from "./engine.bundle.js";
 
 const stuffStatusEl = document.getElementById("stuff-status");
 const manualStuffBox = document.getElementById("manual-stuff-box");
@@ -166,27 +168,17 @@ submitBtn.addEventListener("click", async () => {
     const pmOverride = pmOverrideEl.value ? Number(pmOverrideEl.value) : undefined;
     const playerLifePointsOverride = pvOverrideEl.value ? Number(pvOverrideEl.value) : undefined;
 
-    let res;
-    try {
-      res = await fetch(API_BASE + "/api/simulate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stuffJson,
-          monsterLink: monsterLinkEl.value,
-          apOverride,
-          pmOverride,
-          playerLifePointsOverride,
-        }),
-      });
-    } catch {
-      throw new Error(
-        "Impossible de contacter le serveur BattleSim sur " + API_BASE + " — lance `npm run start` dans le projet.",
-      );
-    }
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Erreur inconnue.");
+    // Calcul fait entièrement en local dans le popup (moteur embarqué, voir
+    // engine.bundle.js) : aucun serveur à lancer, seul DofusDB est appelé en
+    // direct depuis l'extension (autorisé sans blocage CORS grâce au
+    // host_permissions sur api.dofusdb.fr dans le manifest).
+    const data = await runSimulation({
+      stuffJson,
+      monsterLink: monsterLinkEl.value,
+      apOverride,
+      pmOverride,
+      playerLifePointsOverride,
+    });
     render(data);
   } catch (err) {
     errorEl.textContent = err.message;

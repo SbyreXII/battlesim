@@ -11,6 +11,6 @@
   "host_permissions": [
     "https://www.dofusbook.net/*",
     "https://dofusbook.net/*",
-    "http://localhost:3000/*"
+    "https://api.dofusdb.fr/*"
   ]
 }
