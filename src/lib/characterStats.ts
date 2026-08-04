@@ -169,6 +169,12 @@ export function computeCharacterStats(stuff: DofusbookStuff): CharacterStats {
   stats.characteristics.agility += carac.base_ag ?? 0;
   stats.characteristics.wisdom += carac.base_sa ?? 0;
 
+  // Testé : ajouter stuff.stuffFm.fm.pa/pm (bonus de familier) rapproche le PA
+  // du total réel (10→11 PA sur le stuff d'exemple, vrai total 12) mais
+  // ÉLOIGNE le PM du réel (5→6 PM, vrai total 5 d'après le nom du stuff) —
+  // signal contradictoire, donc pas ajouté. Le total exact reste incertain
+  // (TODO) ; utiliser `apOverride`/`playerLifePointsOverride` pour la
+  // précision en attendant.
   stats.actionPoints = BASE_ACTION_POINTS + stats.combat.apBonus;
   stats.movementPoints = BASE_MOVEMENT_POINTS + stats.combat.mpBonus;
 

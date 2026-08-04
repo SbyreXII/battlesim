@@ -107,9 +107,15 @@ export async function resolveDamageSpells(
  *
  * Cas non résolu : les sorts Neutre n'ont pas de caractéristique associée
  * (comme pour les joueurs), donc multiplicateur ×1 ici. Pas pu le vérifier
- * précisément (le seul sort Neutre testé venait d'un monstre dont Force et
- * Chance valaient la même chose, donc les deux hypothèses collaient) — à
- * revérifier si un cas Neutre donne un résultat visiblement faux.
+ * précisément — mais en sondant plusieurs monstres sur DofusDB (Sylargh,
+ * Klime, Grozilla, Comte Harebourg, Missiz Frizz...), il s'avère que
+ * l'écrasante majorité ont leurs 4 caractéristiques STRICTEMENT ÉGALES —
+ * Minotoboule de Nowel (100/500/100/300), le seul cas testé avec des
+ * dégâts Neutre, est plutôt une exception. Ça limite beaucoup l'impact
+ * pratique de cette incertitude : sur la plupart des monstres, peu importe
+ * laquelle des 4 caractéristiques s'applique au Neutre, le résultat serait
+ * identique. Reste à vérifier sur un monstre aux caractéristiques
+ * différenciées ET un sort Neutre si l'occasion se présente.
  */
 function monsterDamageMultiplier(element: Element, grade: DofusDbMonsterGrade): number {
   const key = ELEMENT_CHARACTERISTIC[element];
