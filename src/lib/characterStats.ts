@@ -31,6 +31,11 @@ const COMBAT_CODES = {
   cc: "critChancePercent",
   dc: "critDamageBonus",
   pu: "power",
+  // "dmg" = Dommages générique (toutes éléments), trouvé sur un stuff Enutrof
+  // réel et jusque-là non décodé (finissait dans `raw`, jamais compté dans
+  // les dégâts). Traité comme équivalent à Puissance dans notre modèle
+  // additif simplifié (les deux ajoutent un bonus plat toutes éléments).
+  dmg: "power",
   pa: "apBonus",
   pm: "mpBonus",
 } as const;
@@ -70,9 +75,18 @@ export interface CharacterStats {
   raw: Record<string, number>;
 }
 
-/** Base standard Ankama pour tout personnage (hors bonus). */
-const BASE_ACTION_POINTS = 6;
-const BASE_MOVEMENT_POINTS = 3;
+/**
+ * Base Ankama (6 PA / 3 PM) + 1 PA + 1 PM, en supposant que les quêtes de
+ * récompense permanente (très largement complétées par n'importe quel
+ * personnage de haut niveau) ont été faites. Vérifié contre l'affichage
+ * calculé par dofusbook.net lui-même sur un vrai stuff Enutrof niveau 200
+ * (12 PA / 6 PM réels contre 10 PA / 4 PM en base stricte, donc bien +1 sur
+ * les deux) — mais ce n'est qu'une hypothèse par défaut, pas une garantie
+ * pour tous les personnages (ex: un perso qui n'a pas fait ces quêtes).
+ * Utiliser `apOverride` pour corriger si besoin.
+ */
+const BASE_ACTION_POINTS = 7;
+const BASE_MOVEMENT_POINTS = 4;
 
 function emptyStats(): CharacterStats {
   return {

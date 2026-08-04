@@ -15,6 +15,12 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
+  // Private Network Access (Chrome) : une page HTTPS (ex: dofusbook.net)
+  // qui appelle un serveur local doit passer une vérification en plus du
+  // CORS classique, sans quoi la requête reste bloquée en attente sans
+  // jamais échouer proprement. Sans danger ici : serveur local, pas de
+  // données sensibles.
+  res.header("Access-Control-Allow-Private-Network", "true");
   if (req.method === "OPTIONS") {
     res.sendStatus(204);
     return;
