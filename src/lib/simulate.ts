@@ -1,7 +1,7 @@
 import { parseStuffJson } from "./dofusbookParser.js";
 import { computeCharacterStats } from "./characterStats.js";
 import { getBreedById } from "./dofusdb.js";
-import { resolveDamageSpells, resolveBuffSpells, resolveMonsterDamageSpells } from "./spellCatalog.js";
+import { resolveDamageSpellsWithCoverage, resolveBuffSpells, resolveMonsterDamageSpells } from "./spellCatalog.js";
 import { resolveWeaponAttack } from "./weaponAttack.js";
 import { assessKiteFeasibility, splitMonsterSpellsByRange } from "./kiteAnalysis.js";
 import { parseStatsFromTitle } from "./titleStats.js";
@@ -88,6 +88,8 @@ export interface SimulationResult {
     damageResolved: number;
     damageTotal: number;
     buffResolved: number;
+    /** Noms des sorts de dégâts non reconnus (soin, buff, sort spécial...), pour savoir lesquels manquent au calcul. */
+    unresolvedDamageSpellNames: string[];
   };
   playerAttack: {
     baselineTurnsNeeded: number;
@@ -144,10 +146,11 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
   const titleHint = parseStatsFromTitle(stuff.name);
 
   const breed = await getBreedById(stuff.character_class);
-  const [spellDamageOptions, buffSpells] = await Promise.all([
-    resolveDamageSpells(breed.breedSpellsId, stuff.character_level),
+  const [damageCoverage, buffSpells] = await Promise.all([
+    resolveDamageSpellsWithCoverage(breed.breedSpellsId, stuff.character_level),
     resolveBuffSpells(breed.breedSpellsId, stuff.character_level),
   ]);
+  const spellDamageOptions = damageCoverage.resolved;
   const weaponAttack = resolveWeaponAttack(stuff);
   const damageSpells = weaponAttack ? [...spellDamageOptions, weaponAttack] : spellDamageOptions;
 
@@ -242,6 +245,7 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
       damageResolved: spellDamageOptions.length,
       damageTotal: breed.breedSpellsId.length,
       buffResolved: buffSpells.length,
+      unresolvedDamageSpellNames: damageCoverage.unresolvedNames,
     },
     playerAttack: {
       baselineTurnsNeeded: baseline.turnsNeeded,

@@ -1,13 +1,52 @@
 const DOFUSDB_BASE = "https://api.dofusdb.fr";
+const REQUEST_TIMEOUT_MS = 10_000;
+const MAX_ATTEMPTS = 3;
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Une simulation fait facilement plusieurs dizaines de requêtes DofusDB (même
+ * avec le cache, tout est à froid au premier appel). Sans retry, une seule
+ * requête qui traîne ou renvoie une erreur transitoire (5xx, coupure réseau)
+ * fait échouer toute la simulation. On retente avec un backoff court sur les
+ * erreurs réseau et les 5xx (pas sur les 4xx : un id invalide ne devient pas
+ * valide en réessayant), et on borne chaque tentative avec un timeout pour ne
+ * jamais laisser l'utilisateur bloqué indéfiniment sur "Calcul en cours".
+ */
 async function dofusDbGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${DOFUSDB_BASE}${path}`, {
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) {
-    throw new Error(`DofusDB request failed (${res.status}): ${path}`);
+  let lastError: Error = new Error(`DofusDB request failed: ${path}`);
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let clientError = false;
+
+    try {
+      const res = await fetch(`${DOFUSDB_BASE}${path}`, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      if (res.ok) return (await res.json()) as T;
+      lastError = new Error(`DofusDB request failed (${res.status}): ${path}`);
+      clientError = res.status < 500; // un id invalide ne devient pas valide en réessayant
+    } catch (err) {
+      lastError =
+        err instanceof Error && err.name === "AbortError"
+          ? new Error(`DofusDB n'a pas répondu à temps (${path})`)
+          : (err as Error);
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (clientError) throw lastError;
+    if (attempt < MAX_ATTEMPTS) await sleep(300 * attempt);
   }
-  return (await res.json()) as T;
+
+  throw new Error(
+    `DofusDB est indisponible après ${MAX_ATTEMPTS} tentatives (${path}) : ${lastError.message}`,
+  );
 }
 
 /**

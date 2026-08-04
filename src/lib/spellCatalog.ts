@@ -86,6 +86,33 @@ export async function resolveDamageSpells(
   return resolved.filter((s): s is DamageSpellOption => s !== null);
 }
 
+export interface SpellResolutionCoverage {
+  resolved: DamageSpellOption[];
+  /** Noms des sorts qui n'ont pas donné de sort de dégâts direct (soin, buff, déplacement...). */
+  unresolvedNames: string[];
+}
+
+/**
+ * Comme `resolveDamageSpells`, mais renvoie aussi le nom des sorts non
+ * résolus — utilisé pour afficher à l'utilisateur *lesquels* de ses sorts
+ * ne sont pas pris en compte dans le calcul, pas juste un compteur.
+ */
+export async function resolveDamageSpellsWithCoverage(
+  spellIds: number[],
+  characterLevel: number,
+): Promise<SpellResolutionCoverage> {
+  const pairs = await Promise.all(
+    spellIds.map(async (id) => {
+      const [option, spell] = await Promise.all([resolveDamageSpell(id, characterLevel), getSpellById(id)]);
+      return { option, name: spell.name.fr };
+    }),
+  );
+  return {
+    resolved: pairs.filter((p): p is { option: DamageSpellOption; name: string } => p.option !== null).map((p) => p.option),
+    unresolvedNames: pairs.filter((p) => p.option === null).map((p) => p.name),
+  };
+}
+
 /**
  * Formule des dégâts de MONSTRE, vérifiée empiriquement contre dofensive.com
  * sur 2 sorts de 2 monstres différents (dégâts normaux ET critiques, 4

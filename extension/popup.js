@@ -20,13 +20,22 @@ let detectedStuffJson = null;
 // fois) pour éviter de les retaper à chaque monstre testé.
 const OVERRIDES_STORAGE_KEY = "battlesim-overrides";
 
-chrome.storage.local.get([OVERRIDES_STORAGE_KEY], (result) => {
-  const saved = result[OVERRIDES_STORAGE_KEY];
-  if (!saved) return;
-  apOverrideEl.value = saved.apOverride ?? "";
-  pmOverrideEl.value = saved.pmOverride ?? "";
-  pvOverrideEl.value = saved.pvOverride ?? "";
-});
+let savedMonsterLink = "";
+
+function loadOverridesFromStorage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([OVERRIDES_STORAGE_KEY], (result) => {
+      const saved = result[OVERRIDES_STORAGE_KEY];
+      if (saved) {
+        apOverrideEl.value = saved.apOverride ?? "";
+        pmOverrideEl.value = saved.pmOverride ?? "";
+        pvOverrideEl.value = saved.pvOverride ?? "";
+        savedMonsterLink = saved.monsterLink ?? "";
+      }
+      resolve();
+    });
+  });
+}
 
 function saveOverridesToStorage() {
   chrome.storage.local.set({
@@ -34,6 +43,7 @@ function saveOverridesToStorage() {
       apOverride: apOverrideEl.value,
       pmOverride: pmOverrideEl.value,
       pvOverride: pvOverrideEl.value,
+      monsterLink: monsterLinkEl.value,
     },
   });
 }
@@ -94,6 +104,12 @@ async function detectMonsterTab() {
     monsterStatusEl.textContent = "✓ Repris depuis un onglet dofensive.com ouvert.";
     monsterStatusEl.hidden = false;
     monsterStatusEl.className = "status ok";
+  } else if (savedMonsterLink) {
+    // Aucun onglet dofensive.com ouvert : on retombe sur le dernier lien testé.
+    monsterLinkEl.value = savedMonsterLink;
+    monsterStatusEl.textContent = "Dernier monstre testé (aucun onglet dofensive.com ouvert).";
+    monsterStatusEl.hidden = false;
+    monsterStatusEl.className = "status warn";
   }
 }
 
@@ -225,7 +241,11 @@ function render(data) {
     <div class="section-title">${c.name} (niv. ${c.level}, ${c.apPerTurn} PA / ${c.pmPerTurn} PM)</div>
     <p class="coverage-note">Int ${c.intelligence} · For ${c.strength} · Cha ${c.chance} · Agi ${c.agility} · Vit ${c.vitality}</p>
     ${titleHintHtml(c)}
-    <p class="coverage-note">${data.spellCoverage.damageResolved}/${data.spellCoverage.damageTotal} sorts reconnus</p>
+    <p class="coverage-note">${data.spellCoverage.damageResolved}/${data.spellCoverage.damageTotal} sorts reconnus${
+      data.spellCoverage.unresolvedDamageSpellNames?.length > 0
+        ? ` — non pris en compte : ${data.spellCoverage.unresolvedDamageSpellNames.join(", ")}`
+        : ""
+    }</p>
     ${unmodeledEffectsHtml(c)}
 
     <div class="section-title">${m.name} (grade ${m.grade}, ${m.lifePoints} PV)</div>
@@ -247,5 +267,7 @@ function render(data) {
   resultsEl.hidden = false;
 }
 
-detectStuff();
-detectMonsterTab();
+loadOverridesFromStorage().then(() => {
+  detectStuff();
+  detectMonsterTab();
+});

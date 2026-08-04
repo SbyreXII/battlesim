@@ -97,17 +97,22 @@ submitBtn.addEventListener("click", async () => {
     const apOverride = apOverrideEl.value ? Number(apOverrideEl.value) : undefined;
     const pmOverride = pmOverrideEl.value ? Number(pmOverrideEl.value) : undefined;
     const playerLifePointsOverride = pvOverrideEl.value ? Number(pvOverrideEl.value) : undefined;
-    const res = await fetch("/api/simulate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        stuffJson: stuffJsonEl.value,
-        monsterLink: monsterLinkEl.value,
-        apOverride,
-        pmOverride,
-        playerLifePointsOverride,
-      }),
-    });
+    let res;
+    try {
+      res = await fetch("/api/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stuffJson: stuffJsonEl.value,
+          monsterLink: monsterLinkEl.value,
+          apOverride,
+          pmOverride,
+          playerLifePointsOverride,
+        }),
+      });
+    } catch {
+      throw new Error("Impossible de contacter le serveur BattleSim — vérifie qu'il tourne bien (`npm run start`).");
+    }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erreur inconnue.");
     render(data);
@@ -225,7 +230,11 @@ function render(data) {
       <div><span>Vitalité</span>${c.vitality}</div>
     </div>
     ${titleHintHtml(c)}
-    <p class="coverage-note">${data.spellCoverage.damageResolved}/${data.spellCoverage.damageTotal} sorts de dégâts reconnus, ${data.spellCoverage.buffResolved} sort(s) de buff.</p>
+    <p class="coverage-note">${data.spellCoverage.damageResolved}/${data.spellCoverage.damageTotal} sorts de dégâts reconnus, ${data.spellCoverage.buffResolved} sort(s) de buff.${
+      data.spellCoverage.unresolvedDamageSpellNames.length > 0
+        ? ` Non pris en compte : ${data.spellCoverage.unresolvedDamageSpellNames.join(", ")}.`
+        : ""
+    }</p>
     ${unmodeledEffectsHtml(c)}
 
     <div class="section-title">Cible : ${m.name} (grade ${m.grade}, niv. ${m.level})</div>
