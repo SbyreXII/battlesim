@@ -75,6 +75,7 @@ Le moteur de dégâts a été vérifié empiriquement (comparaison avec les vale
 
 ```bash
 npm run typecheck   # vérifie les types sans compiler
+npm test             # tests unitaires (node --test)
 npm run dev          # serveur avec rechargement automatique
 ```
 
