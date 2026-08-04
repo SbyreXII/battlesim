@@ -22,30 +22,46 @@ const OVERRIDES_STORAGE_KEY = "battlesim-overrides";
 
 let savedMonsterLink = "";
 
+/**
+ * Best-effort : si la permission "storage" n'est pas encore active (ex :
+ * extension pas rechargée après une mise à jour du manifest), `chrome.storage`
+ * est `undefined` et lèverait une exception ici. On ne doit JAMAIS laisser ça
+ * bloquer la détection stuff/monstre, qui est le cœur de l'extension — d'où
+ * le try/catch et la résolution immédiate en cas d'échec.
+ */
 function loadOverridesFromStorage() {
   return new Promise((resolve) => {
-    chrome.storage.local.get([OVERRIDES_STORAGE_KEY], (result) => {
-      const saved = result[OVERRIDES_STORAGE_KEY];
-      if (saved) {
-        apOverrideEl.value = saved.apOverride ?? "";
-        pmOverrideEl.value = saved.pmOverride ?? "";
-        pvOverrideEl.value = saved.pvOverride ?? "";
-        savedMonsterLink = saved.monsterLink ?? "";
-      }
+    try {
+      chrome.storage.local.get([OVERRIDES_STORAGE_KEY], (result) => {
+        const saved = result?.[OVERRIDES_STORAGE_KEY];
+        if (saved) {
+          apOverrideEl.value = saved.apOverride ?? "";
+          pmOverrideEl.value = saved.pmOverride ?? "";
+          pvOverrideEl.value = saved.pvOverride ?? "";
+          savedMonsterLink = saved.monsterLink ?? "";
+        }
+        resolve();
+      });
+    } catch (err) {
+      console.warn("BattleSim: stockage local indisponible, overrides non restaurés.", err);
       resolve();
-    });
+    }
   });
 }
 
 function saveOverridesToStorage() {
-  chrome.storage.local.set({
-    [OVERRIDES_STORAGE_KEY]: {
-      apOverride: apOverrideEl.value,
-      pmOverride: pmOverrideEl.value,
-      pvOverride: pvOverrideEl.value,
-      monsterLink: monsterLinkEl.value,
-    },
-  });
+  try {
+    chrome.storage.local.set({
+      [OVERRIDES_STORAGE_KEY]: {
+        apOverride: apOverrideEl.value,
+        pmOverride: pmOverrideEl.value,
+        pvOverride: pvOverrideEl.value,
+        monsterLink: monsterLinkEl.value,
+      },
+    });
+  } catch (err) {
+    console.warn("BattleSim: stockage local indisponible, overrides non sauvegardés.", err);
+  }
 }
 
 // Exécutée DANS l'onglet dofusbook.net (même origine : pas de blocage
@@ -97,14 +113,22 @@ async function detectStuff() {
   }
 }
 
-async function detectMonsterTab() {
+/**
+ * `overridesPromise` n'est attendu QUE si aucun onglet dofensive.com n'est
+ * trouvé — la détection par onglet (le cas normal) ne dépend donc jamais du
+ * bon fonctionnement du stockage local.
+ */
+async function detectMonsterTab(overridesPromise) {
   const tabs = await chrome.tabs.query({ url: ["*://dofensive.com/*", "*://*.dofensive.com/*"] });
   if (tabs.length > 0 && tabs[0].url) {
     monsterLinkEl.value = tabs[0].url;
     monsterStatusEl.textContent = "✓ Repris depuis un onglet dofensive.com ouvert.";
     monsterStatusEl.hidden = false;
     monsterStatusEl.className = "status ok";
-  } else if (savedMonsterLink) {
+    return;
+  }
+  await overridesPromise;
+  if (savedMonsterLink) {
     // Aucun onglet dofensive.com ouvert : on retombe sur le dernier lien testé.
     monsterLinkEl.value = savedMonsterLink;
     monsterStatusEl.textContent = "Dernier monstre testé (aucun onglet dofensive.com ouvert).";
@@ -267,7 +291,9 @@ function render(data) {
   resultsEl.hidden = false;
 }
 
-loadOverridesFromStorage().then(() => {
-  detectStuff();
-  detectMonsterTab();
-});
+// Le chargement des overrides (AP/PM/PV/dernier monstre) se fait en
+// parallèle de la détection stuff/monstre, jamais en bloquant dessus : une
+// panne de stockage local ne doit jamais empêcher l'extension de fonctionner.
+const overridesPromise = loadOverridesFromStorage();
+detectStuff();
+detectMonsterTab(overridesPromise);
