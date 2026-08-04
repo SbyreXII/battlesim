@@ -1,6 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveDamageSpellsWithCoverage } from "../src/lib/spellCatalog.js";
+import { resolveDamageSpellsWithCoverage, diceRoll } from "../src/lib/spellCatalog.js";
+
+test("diceRoll : diceSide=0 (convention DofusDB 'valeur fixe') donne un intervalle dégénéré min===max, pas un max=0", () => {
+  // Cas réel : "Substitution Funèbre" du monstre Gein, diceNum=40, diceSide=0,
+  // Intelligence=1200 -> dofensive.com affiche 520 (40 × (1+1200/100)).
+  const roll = diceRoll({ effectId: 99, effectElement: 2, diceNum: 40, diceSide: 0, duration: 0, targetMask: "" }, 13);
+  assert.deepEqual(roll, { min: 520, max: 520 });
+});
+
+test("diceRoll : un vrai intervalle (diceSide > 0) est conservé tel quel", () => {
+  const roll = diceRoll({ effectId: 96, effectElement: 3, diceNum: 151, diceSide: 200, duration: 0, targetMask: "" }, 2);
+  assert.deepEqual(roll, { min: 302, max: 400 });
+});
 
 const SPELLS: Record<number, { name: string; spellLevels: number[] }> = {
   1001: { name: "Frappe", spellLevels: [11001] },

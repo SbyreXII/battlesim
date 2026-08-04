@@ -740,7 +740,6 @@ var ELEMENT_CHARACTERISTIC = {
   air: "agility"
 };
 function average(roll) {
-  if (roll.max === 0) return roll.min;
   return (roll.min + roll.max) / 2;
 }
 function computeSpellDamage(input) {
@@ -775,6 +774,13 @@ var DAMAGE_EFFECT_IDS = /* @__PURE__ */ new Set([96, 97, 98, 99, 100]);
 function findDamageEffect(effects) {
   return effects.find((e) => DAMAGE_EFFECT_IDS.has(e.effectId) && e.effectElement >= 0);
 }
+function diceRoll(effect, multiplier = 1) {
+  const fixed = effect.diceSide === 0;
+  return {
+    min: effect.diceNum * multiplier,
+    max: (fixed ? effect.diceNum : effect.diceSide) * multiplier
+  };
+}
 async function resolveDamageSpell(spellId, characterLevel) {
   const [spell, spellLevel] = await Promise.all([
     getSpellById(spellId),
@@ -792,8 +798,8 @@ async function resolveDamageSpell(spellId, characterLevel) {
     maxCastPerTarget: spellLevel.maxCastPerTarget,
     range: spellLevel.range,
     element: ELEMENT_ID_MAP[normalEffect.effectElement],
-    normalDamage: { min: normalEffect.diceNum, max: normalEffect.diceSide },
-    criticalDamage: { min: criticalEffect.diceNum, max: criticalEffect.diceSide },
+    normalDamage: diceRoll(normalEffect),
+    criticalDamage: diceRoll(criticalEffect),
     criticalHitProbability: spellLevel.criticalHitProbability
   };
 }
@@ -838,14 +844,8 @@ async function resolveMonsterDamageSpell(spellId, spellGrade, monsterGrade) {
     maxCastPerTarget: spellLevel.maxCastPerTarget,
     range: spellLevel.range,
     element,
-    normalDamage: {
-      min: normalEffect.diceNum * multiplier,
-      max: normalEffect.diceSide * multiplier
-    },
-    criticalDamage: {
-      min: criticalEffect.diceNum * multiplier,
-      max: criticalEffect.diceSide * multiplier
-    },
+    normalDamage: diceRoll(normalEffect, multiplier),
+    criticalDamage: diceRoll(criticalEffect, multiplier),
     criticalHitProbability: spellLevel.criticalHitProbability
   };
 }

@@ -37,6 +37,24 @@ function findDamageEffect(effects: DofusDbSpellEffect[]): DofusDbSpellEffect | u
 }
 
 /**
+ * Convertit un jet de dégâts DofusDB en `DamageRoll` exploitable par le
+ * moteur. Convention DofusDB : `diceSide = 0` ne veut PAS dire "borne haute
+ * à 0", ça veut dire "pas de jet, valeur fixe = diceNum" (beaucoup de sorts
+ * n'ont aucun aléatoire). On normalise ça ICI, à la frontière avec DofusDB,
+ * pour que `DamageRoll` représente toujours un vrai intervalle fermé — le
+ * moteur de dégâts (damage.ts) n'a pas à connaître cette bizarrerie de
+ * DofusDB, et rien en aval ne peut se faire piéger par un `max: 0` fantôme.
+ * `multiplier` optionnel pour les sorts de monstre (cf. `monsterDamageMultiplier`).
+ */
+export function diceRoll(effect: DofusDbSpellEffect, multiplier = 1): DamageRoll {
+  const fixed = effect.diceSide === 0;
+  return {
+    min: effect.diceNum * multiplier,
+    max: (fixed ? effect.diceNum : effect.diceSide) * multiplier,
+  };
+}
+
+/**
  * Résout un sort en option de dégâts exploitable par l'optimiseur, ou `null`
  * si ce n'est pas un sort de dégâts direct (soin, buff, déplacement...).
  *
@@ -69,8 +87,8 @@ export async function resolveDamageSpell(
     maxCastPerTarget: spellLevel.maxCastPerTarget,
     range: spellLevel.range,
     element: ELEMENT_ID_MAP[normalEffect.effectElement],
-    normalDamage: { min: normalEffect.diceNum, max: normalEffect.diceSide },
-    criticalDamage: { min: criticalEffect.diceNum, max: criticalEffect.diceSide },
+    normalDamage: diceRoll(normalEffect),
+    criticalDamage: diceRoll(criticalEffect),
     criticalHitProbability: spellLevel.criticalHitProbability,
   };
 }
@@ -181,14 +199,8 @@ async function resolveMonsterDamageSpell(
     maxCastPerTarget: spellLevel.maxCastPerTarget,
     range: spellLevel.range,
     element,
-    normalDamage: {
-      min: normalEffect.diceNum * multiplier,
-      max: normalEffect.diceSide * multiplier,
-    },
-    criticalDamage: {
-      min: criticalEffect.diceNum * multiplier,
-      max: criticalEffect.diceSide * multiplier,
-    },
+    normalDamage: diceRoll(normalEffect, multiplier),
+    criticalDamage: diceRoll(criticalEffect, multiplier),
     criticalHitProbability: spellLevel.criticalHitProbability,
   };
 }

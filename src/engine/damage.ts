@@ -56,18 +56,15 @@ export interface DamageResult {
 }
 
 /**
- * Convention DofusDB (cf. `DofusDbSpellEffect.diceSide` dans dofusdb.ts) :
- * `diceSide = 0` ne veut PAS dire "borne haute à 0", ça veut dire "pas de
- * jet, valeur fixe = diceNum" (cas très courant : beaucoup de sorts n'ont
- * aucun aléatoire). Vérifié sur "Substitution Funèbre" (monstre Gein,
- * diceNum=40, diceSide=0) : dofensive.com affiche 520 dégâts (40 × (1+1200/100)),
- * alors qu'une simple moyenne (min+max)/2 donnait 260 — exactement moitié
- * moins, le bug était systématique sur tout sort à dégâts fixes (joueur ET
- * monstre), silencieux jusqu'ici car les sorts déjà vérifiés (Boule de
- * Neige, Grift) ont un vrai intervalle (diceSide > 0).
+ * `DamageRoll` doit toujours représenter un vrai intervalle fermé [min, max]
+ * (un sort à dégâts fixes = min===max, PAS max=0). C'est la responsabilité de
+ * l'appelant (`spellCatalog.ts`, via `diceRoll()`) de normaliser ça — cette
+ * fonction ne connaît rien à DofusDB et ne doit pas avoir à deviner un cas
+ * spécial. Historique : un bug ici traitait `diceSide=0` de DofusDB (qui
+ * signifie "valeur fixe", pas "borne haute 0") comme un vrai 0, divisant par
+ * 2 tout sort à dégâts fixes — corrigé en amont, pas ici.
  */
 function average(roll: DamageRoll): number {
-  if (roll.max === 0) return roll.min;
   return (roll.min + roll.max) / 2;
 }
 

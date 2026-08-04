@@ -75,14 +75,14 @@ test("les dégâts ne descendent jamais sous 0", () => {
   assert.equal(result.averageNormalHit, 0);
 });
 
-test("un dégât fixe DofusDB (max=0, convention 'pas de jet') n'est pas divisé par 2", () => {
-  // Cas réel : "Substitution Funèbre" du monstre Gein, diceNum=40, diceSide=0,
-  // Intelligence=1200 -> dofensive.com affiche 520 (40 × (1+1200/100)).
-  // Avant le fix, une moyenne (min+max)/2 aurait donné 260, moitié moins.
+test("un dégât fixe (min===max, intervalle dégénéré) donne cette valeur telle quelle", () => {
+  // Contrat de DamageRoll : une valeur fixe se représente par min===max, pas
+  // par un max=0 fantôme (cf. spellCatalog.ts:diceRoll, qui normalise le
+  // diceSide=0 de DofusDB avant que ça arrive jusqu'ici).
   const result = computeSpellDamage({
     element: "neutral",
-    normalDamage: { min: 520, max: 0 },
-    criticalDamage: { min: 520, max: 0 },
+    normalDamage: { min: 520, max: 520 },
+    criticalDamage: { min: 520, max: 520 },
     critChancePercent: 0,
     caster: attacker(),
     targetResistancePercent: 0,
