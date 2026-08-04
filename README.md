@@ -67,7 +67,7 @@ Le moteur de dégâts a été vérifié empiriquement (comparaison avec les vale
 - **Arme** : prise en compte comme option d'attaque, mais élément Neutre par défaut (pas de donnée d'élément d'arme disponible côté dofusbook) et pas de jet critique séparé.
 - **Sorts passifs** (ex: Accumulation, Pugilat chez l'Iop) : pas modélisés.
 - **Effets conditionnels/cumulatifs** : les sorts dont les dégâts dépendent d'un état de jeu (ex: augmentent à chaque lancer, ou changent de cible) ne comptent que leur valeur de base.
-- **Un seul buff à la fois** : l'analyse "faut-il se booster" ne teste jamais la combinaison de plusieurs buffs.
+- **Combinaisons de buffs** : testées (tous les sous-ensembles), mais la durée du groupe est simplifiée au minimum des durées individuelles — après l'expiration du premier buff du groupe, on repasse directement à "sans buff" plutôt que de ne retirer que celui-là.
 - **Initiative** : la simulation "qui gagne" suppose que le joueur agit toujours en premier — pas de vraie gestion d'ordre de passage.
 - **Kite** (Tacle, Fuite, retrait PM/PA, esquive) : pas encore modélisé.
 

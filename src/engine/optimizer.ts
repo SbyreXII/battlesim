@@ -189,32 +189,54 @@ export function planFight(
   return { turn: turns[0], turnsNeeded, totalDamageDealt: totalDamage };
 }
 
-function applyPowerBonus(caster: AttackerProfile, powerBonus: number): AttackerProfile {
-  return { ...caster, combat: { ...caster.combat, power: caster.combat.power + powerBonus } };
+function applyBuffs(caster: AttackerProfile, buffs: BuffSpellOption[]): AttackerProfile {
+  const totalPowerBonus = buffs.reduce((sum, b) => sum + b.powerBonus, 0);
+  return { ...caster, combat: { ...caster.combat, power: caster.combat.power + totalPowerBonus } };
 }
 
 /**
  * Construit la fonction "lanceur/PA par tour" pour une stratégie donnée
- * (pas de buff, ou buff au tour 1 puis boost pendant sa durée). Partagée
- * entre `planOptimalFight` et `simulateRace` pour que la course tienne
- * compte de la même stratégie que celle recommandée comme "meilleure".
+ * (aucun buff, un seul, ou plusieurs combinés). Tous les buffs du groupe
+ * sont lancés au tour 1 (coût cumulé), puis restent actifs jusqu'à ce que le
+ * PREMIER d'entre eux expire (durée = le minimum des durées du groupe —
+ * simplification : après ça, on retombe directement à "sans buff" plutôt que
+ * de ne retirer que le buff expiré et garder les autres actifs, ce qui
+ * sous-estime légèrement les groupes de buffs à durées très différentes).
+ * Partagée entre `planOptimalFight` et `simulateRace` pour que la course
+ * tienne compte de la même stratégie que celle recommandée comme "meilleure".
  */
 export function casterScheduleFor(
   caster: AttackerProfile,
-  buff: BuffSpellOption | null,
+  buffs: BuffSpellOption[],
   apPerTurn: number,
 ): (turnIndex: number) => { caster: AttackerProfile; apBudget: number } {
-  if (!buff) return () => ({ caster, apBudget: apPerTurn });
-  const boostedCaster = applyPowerBonus(caster, buff.powerBonus);
+  if (buffs.length === 0) return () => ({ caster, apBudget: apPerTurn });
+  const totalApCost = buffs.reduce((sum, b) => sum + b.apCost, 0);
+  const durationTurns = Math.min(...buffs.map((b) => b.durationTurns));
+  const boostedCaster = applyBuffs(caster, buffs);
   return (turnIndex) => {
-    if (turnIndex === 1) return { caster, apBudget: apPerTurn - buff.apCost };
-    if (turnIndex <= buff.durationTurns) return { caster: boostedCaster, apBudget: apPerTurn };
+    if (turnIndex === 1) return { caster, apBudget: apPerTurn - totalApCost };
+    if (turnIndex <= durationTurns) return { caster: boostedCaster, apBudget: apPerTurn };
     return { caster, apBudget: apPerTurn };
   };
 }
 
+/** Tous les sous-ensembles non vides de `items` (2^n - 1 combinaisons). */
+function nonEmptySubsets<T>(items: T[]): T[][] {
+  const subsets: T[][] = [];
+  for (let mask = 1; mask < 1 << items.length; mask++) {
+    const subset: T[] = [];
+    for (let i = 0; i < items.length; i++) {
+      if (mask & (1 << i)) subset.push(items[i]);
+    }
+    subsets.push(subset);
+  }
+  return subsets;
+}
+
 export interface BuffStrategy {
-  buff: BuffSpellOption | null;
+  /** Vide = stratégie "sans buff" (baseline). */
+  buffs: BuffSpellOption[];
   turnsNeeded: number;
   /** Dégâts totaux infligés sur `turnsNeeded` tours avec cette stratégie. */
   totalDamage: number;
@@ -224,17 +246,17 @@ export interface BuffStrategy {
 
 /**
  * Compare "attaquer normalement dès le tour 1" à "sacrifier une partie des
- * PA du tour 1 pour se booster, puis attaquer boosté pendant la durée du
- * buff" pour chaque sort de buff disponible, et renvoie la meilleure
- * stratégie trouvée (le moins de tours pour tuer la cible ; à égalité, le
- * plus de dégâts cumulés). Chaque stratégie respecte `maxCastPerTarget`
- * indépendamment (compteur repartant de zéro pour chaque simulation).
+ * PA du tour 1 pour se booster (avec un buff, ou plusieurs combinés), puis
+ * attaquer boosté" pour chaque combinaison de buffs disponible, et renvoie
+ * la meilleure stratégie trouvée (le moins de tours pour tuer la cible ; à
+ * égalité, le plus de dégâts cumulés). Chaque stratégie respecte
+ * `maxCastPerTarget` indépendamment (compteur repartant de zéro pour chaque
+ * simulation).
  *
- * Limite connue (v1) : n'essaie qu'UN SEUL buff à la fois, pas de
- * combinaison de plusieurs buffs simultanés. Ne modélise pas non plus les
- * sorts à double usage (dégâts + buff, ex: "Épée Divine") comme une
- * meilleure "dose gratuite" de buff — le buff est toujours évalué comme un
- * coût net de PA au tour 1.
+ * Limite connue : ne modélise pas les sorts à double usage (dégâts + buff,
+ * ex: "Épée Divine") comme une meilleure "dose gratuite" de buff — un buff
+ * est toujours évalué comme un coût net de PA au tour 1. Voir aussi la
+ * simplification de durée sur `casterScheduleFor`.
  */
 export function planOptimalFight(
   damageSpells: DamageSpellOption[],
@@ -246,7 +268,7 @@ export function planOptimalFight(
 ): { baseline: BuffStrategy; best: BuffStrategy; allStrategies: BuffStrategy[] } {
   const baselineFight = planFight(damageSpells, caster, target, apPerTurn, targetLifePoints);
   const baseline: BuffStrategy = {
-    buff: null,
+    buffs: [],
     turnsNeeded: baselineFight.turnsNeeded,
     totalDamage: baselineFight.totalDamageDealt,
     firstTurn: baselineFight.turn,
@@ -255,18 +277,19 @@ export function planOptimalFight(
 
   const strategies: BuffStrategy[] = [baseline];
 
-  for (const buff of buffSpells) {
-    if (buff.apCost > apPerTurn) continue;
+  for (const buffs of nonEmptySubsets(buffSpells)) {
+    const totalApCost = buffs.reduce((sum, b) => sum + b.apCost, 0);
+    if (totalApCost > apPerTurn) continue;
 
     const { turns, turnsNeeded, totalDamage } = simulateFight(
       damageSpells,
       target,
       targetLifePoints,
-      casterScheduleFor(caster, buff, apPerTurn),
+      casterScheduleFor(caster, buffs, apPerTurn),
     );
 
     strategies.push({
-      buff,
+      buffs,
       turnsNeeded,
       totalDamage,
       firstTurn: turns[0],

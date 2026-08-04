@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { planBestTurn, planFight, simulateRace, type TargetProfile } from "../src/engine/optimizer.js";
+import { planBestTurn, planFight, planOptimalFight, simulateRace, type TargetProfile } from "../src/engine/optimizer.js";
 import type { AttackerProfile } from "../src/engine/damage.js";
-import type { DamageSpellOption } from "../src/lib/spellCatalog.js";
+import type { DamageSpellOption, BuffSpellOption } from "../src/lib/spellCatalog.js";
 
 const caster: AttackerProfile = {
   characteristics: { strength: 0, intelligence: 0, chance: 500, agility: 0 },
@@ -98,4 +98,26 @@ test("simulateRace : le camp qui inflige le plus de dégâts gagne", () => {
   assert.equal(race.outcome, "player_wins");
   assert.equal(race.turnsToKillMonster, 1);
   assert.equal(race.turnsToKillPlayer, null);
+});
+
+test("planOptimalFight teste aussi les combinaisons de plusieurs buffs", () => {
+  const damageSpell = spell({ spellId: 1, apCost: 2, normalDamage: { min: 10, max: 10 }, criticalDamage: { min: 10, max: 10 } });
+  const buffA: BuffSpellOption = { spellId: 101, name: "Buff A", apCost: 2, maxCastPerTurn: 1, durationTurns: 3, powerBonus: 50 };
+  const buffB: BuffSpellOption = { spellId: 102, name: "Buff B", apCost: 2, maxCastPerTurn: 1, durationTurns: 3, powerBonus: 50 };
+
+  // Budget large (20 PA) pour que même le combo A+B (4 PA) plus des attaques
+  // tienne largement au tour 1.
+  const { allStrategies, best } = planOptimalFight([damageSpell], [buffA, buffB], caster, target, 20, 100_000);
+
+  const comboStrategy = allStrategies.find((s) => s.buffs.length === 2);
+  assert.ok(comboStrategy, "la combinaison des deux buffs doit être testée");
+  assert.deepEqual(
+    comboStrategy!.buffs.map((b) => b.name).sort(),
+    ["Buff A", "Buff B"],
+  );
+
+  // 4 stratégies attendues : sans buff, A seul, B seul, A+B.
+  assert.equal(allStrategies.length, 4);
+  // Le combo (bonus cumulé +100) doit tuer au moins aussi vite qu'un seul buff (+50).
+  assert.ok(best.turnsNeeded <= comboStrategy!.turnsNeeded);
 });

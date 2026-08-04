@@ -99,6 +99,11 @@ export interface SimulationResult {
 
 const EMPTY_TURN_VIEW: TurnPlanView = { entries: [], totalApUsed: 0, totalDamage: 0 };
 
+/** "Puissance", "Puissance + Épée Divine", ou null si aucun buff dans le groupe. */
+function buffsLabel(buffs: { name: string }[]): string | null {
+  return buffs.length > 0 ? buffs.map((b) => b.name).join(" + ") : null;
+}
+
 export async function runSimulation(input: SimulationInput): Promise<SimulationResult> {
   const stuff = parseStuffJson(input.stuffJson);
   const stats = computeCharacterStats(stuff);
@@ -141,7 +146,7 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
 
   const race = simulateRace(
     damageSpells,
-    casterScheduleFor(stats, best.buff, apPerTurn),
+    casterScheduleFor(stats, best.buffs, apPerTurn),
     monsterTarget,
     grade.lifePoints,
     monsterSpells,
@@ -180,9 +185,9 @@ export async function runSimulation(input: SimulationInput): Promise<SimulationR
       baselineTurnsNeeded: baseline.turnsNeeded,
       baselineTurn: toView(baseline.firstTurn),
       bestTurnsNeeded: best.turnsNeeded,
-      bestBuffName: best.buff?.name ?? null,
+      bestBuffName: buffsLabel(best.buffs),
       strategies: allStrategies.map((s) => ({
-        buffName: s.buff?.name ?? null,
+        buffName: buffsLabel(s.buffs),
         turnsNeeded: s.turnsNeeded,
         firstTurn: toView(s.firstTurn),
         boostedTurn: s.boostedTurn ? toView(s.boostedTurn) : null,
